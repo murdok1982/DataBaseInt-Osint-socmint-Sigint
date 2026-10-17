@@ -58,11 +58,12 @@ Filtros: `label`, `q`, `?from`/`?to`, `min_confidence`.
 | POST | `/api/v1/analyses/{id}/requirements` | Crea RFI (IntelRequirement) | ANALYST |
 | GET | `/api/v1/analyses` | Lista expedientes analíticos (`?status`) | VIEWER |
 | GET | `/api/v1/analyses/{id}/requirements` | Lista los RFI del expediente | VIEWER |
-
-> **Integridad referencial (v2.0.1):** `POST /analyses/{id}/requirements` exige que
-> el `Analysis` `{id}` exista; si no, responde `404` (nunca `500` por un `MATCH` fallido).
 | GET | `/api/v1/coherence/alerts` | Bandeja de alertas | ANALYST |
 | PATCH | `/api/v1/coherence/alerts/{alert_id}/resolve` | Resuelve/descarta alerta | ANALYST |
+
+> **Integridad referencial (v2.0.1, ampliada en v2.1.0):** `POST` y `GET
+> /analyses/{id}/requirements` exigen que el `Analysis` `{id}` exista; si no,
+> responden `404` (nunca `500` por un `MATCH` fallido ni `200` con lista vacía).
 
 ## 7. GraphRAG (`/search`)
 | Método | Ruta | Descripción | Rol mínimo |
@@ -83,4 +84,4 @@ citan **informes OSINT** (`report_id`, `page_number`, `exact_quote`) y
 - [ ] GraphRAG nunca **afirma** sin `citations`; sin evidencia → `200` con
       `answer` de no-evidencia y `citations: []`.
 - [ ] `neighborhood` limita saltos (`?depth`, máx 3).
-- [ ] Crear un RFI sobre un `Analysis` inexistente devuelve `404` (no `500`).
+- [ ] Crear o listar RFI de un `Analysis` inexistente devuelve `404` (no `500`).
