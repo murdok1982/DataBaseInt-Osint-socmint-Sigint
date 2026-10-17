@@ -1,0 +1,14 @@
+{
+  "title": "Denial of the reported Acme financing",
+  "source_type": "TELEGRAM",
+  "source_url_or_origin": "https://t.me/example_channel",
+  "reliability_rating": "C",
+  "keywords": ["State Bank", "Acme Corp"],
+  "pages": [
+    {
+      "page_number": 1,
+      "text": "State Bank did not finance Acme Corp; the transfer was denied."
+    }
+  ],
+  "assertions": []
+}

@@ -1,0 +1,34 @@
+# --- Secretos y entorno ---
+.env
+.env.*
+!.env.example
+
+# --- Datos sensibles / almacenamiento ---
+storage/raw_reports/*
+storage/processed_chunks/*
+!storage/**/.gitkeep
+!storage/**/README.md
+deploy/nginx/certs/*
+!deploy/nginx/certs/.gitkeep
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+*.log
+
+# --- SO ---
+.DS_Store
+Thumbs.db
+
+# --- OpenCode ---
+# Mantener .opencode/agents (gobernanza). Ignorar estado local si aparece.
+.opencode/state/

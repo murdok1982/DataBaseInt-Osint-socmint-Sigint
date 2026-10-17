@@ -1,0 +1,6 @@
+httpx>=0.27
+jsonschema>=4.21
+pydantic>=2.6
+
+# Tests
+pytest>=8

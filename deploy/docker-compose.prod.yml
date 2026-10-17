@@ -1,0 +1,144 @@
+# =====================================================================
+# docker-compose.prod.yml — OSINT Nexus (VPS)
+# Deriva de SPEC-04 §2 (dos redes, DB sin exposición), §3 (hardening) y
+# Constitución Regla 4 (cero exposición de DB).
+#
+# Neo4j y Redis NO publican puertos. El worker Celery tampoco.
+# Solo Nginx expone 80/443 (único punto de entrada TLS, SPEC-04 §3).
+# =====================================================================
+
+networks:
+  public_net:
+    driver: bridge
+  internal_intel_net:
+    driver: bridge
+    internal: true          # sin salida directa a Internet
+
+volumes:
+  neo4j_data:
+  redis_data:
+  reports_data:              # informes + chunks (STORAGE_RAW_DIR/STORAGE_CHUNKS_DIR)
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    networks: [public_net]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      # Webroot ACME: sirve /.well-known/acme-challenge/ para certbot
+      # (nginx.conf). Permite renovar sin parar Nginx.
+      - ./nginx/webroot:/var/www/certbot
+    depends_on: [frontend, backend]
+    restart: unless-stopped
+
+  frontend:
+    build: ../apps/frontend
+    networks: [public_net]
+    environment:
+      NEXT_PUBLIC_API_BASE: "https://${PUBLIC_HOSTNAME}/api/v1"
+    depends_on: [backend]
+    restart: unless-stopped
+    # Sin ports: solo accesible vía Nginx en public_net
+
+  backend:
+    build: ../apps/backend
+    image: osint-nexus-backend:latest
+    networks: [public_net, internal_intel_net]
+    env_file: [.env]
+    depends_on: [neo4j, redis]
+    volumes:
+      # SPEC-02 §1.2: informes crudos (raw_reports) y chunks procesados.
+      # STORAGE_RAW_DIR/STORAGE_CHUNKS_DIR apuntan a /storage (ver .env).
+      - reports_data:/storage
+      # Contrato sellado (solo lectura). El código resuelve
+      # ``Path(__file__).parents[4] / "contracts"`` => /srv/osint/contracts
+      # (extraction-schema.json y graph-constraints.cypher). Ver Dockerfile.
+      - ../contracts:/srv/osint/contracts:ro
+    restart: unless-stopped
+    # Sin ports: Nginx hace de proxy inverso
+
+  # --- Worker Celery (SPEC-02 §5) -----------------------------------
+  # Ejecuta el pipeline de ingesta ``preflight → chunk → extract → validate →
+  # coherence → resolve → persist`` reutilizando la imagen del backend.
+  # Red interna (Constitución Regla 4): sin ``ports:``, sin acceso directo.
+  # La app Celery es ``app.workers.celery_app:celery_app`` (APP_NAME="osint") y
+  # la tarea es ``osint.workers.ingest_report`` (app/workers/tasks.py), que se
+  # registra importando ``app.workers.tasks`` (--include).
+  worker:
+    build: ../apps/backend
+    image: osint-nexus-backend:latest
+    networks: [internal_intel_net]
+    env_file: [.env]
+    depends_on: [redis, backend]
+    command:
+      - celery
+      - -A
+      - app.workers.celery_app:celery_app
+      - worker
+      - --include=app.workers.tasks
+      - --loglevel=INFO
+      - --concurrency=${WORKER_CONCURRENCY:-2}
+    volumes:
+      # Debe leer el informe crudo que guardó el backend (mismo volumen).
+      - reports_data:/storage
+      - ../contracts:/srv/osint/contracts:ro
+    restart: unless-stopped
+    # PROHIBIDO añadir "ports:" (Regla 4): solo Nginx publica.
+
+  # --- Informante IA (principal M2M AI_INFORMANT) -------------------
+  # SPEC-04 §2: vive en la red interna; habla con la API por el nombre de
+  # servicio "backend" y NUNCA toca Neo4j/Redis (Constitución, Regla 4).
+  # Es un job de lote (preflight → extraer → validar → ingerir); no expone puertos.
+  informant-agent:
+    build:
+      context: ../apps/informant-agent
+      dockerfile: ../../deploy/informant-agent.Dockerfile
+    image: osint-informant-agent:latest
+    networks: [internal_intel_net]
+    env_file: [.env]
+    environment:
+      INFORMANT_API_BASE_URL: "http://backend:8000"
+      # Sin valor por defecto: exige una API Key M2M real (SPEC-04 §4).
+      INFORMANT_API_KEY: "${INFORMANT_API_KEY:?define INFORMANT_API_KEY en .env}"
+      INFORMANT_SOURCE_DIR: "/sources"
+      INFORMANT_CONTRACT_SCHEMA: "/contracts/extraction-schema.json"
+    volumes:
+      - ../contracts:/contracts:ro          # contrato sellado (solo lectura)
+      - ./informant-sources:/sources:ro      # fuentes OSINT a procesar
+    command: ["run", "--source-dir", "/sources"]
+    depends_on: [backend]
+    restart: "no"                            # job de lote: se ejecuta y termina
+    # PROHIBIDO añadir "ports:" (Regla 4): solo backend/Nginx publican.
+
+  redis:
+    image: redis:7-alpine
+    networks: [internal_intel_net]
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    # PROHIBIDO añadir "ports:" aquí (Regla 4)
+
+  neo4j:
+    # Enterprise es OBLIGATORIO por el contrato sellado: SPEC-01/graph-constraints
+    # usa constraints de EXISTENCIA de propiedades (``REQUIRE n.prop IS NOT NULL``),
+    # disponibles solo en Enterprise Edition (Community las ignora/falla).
+    # El índice vectorial de ``entity_embedding_idx`` sí existe en Community,
+    # pero el contrato completo exige Enterprise. Ver deploy/README.md §Neo4j.
+    image: neo4j:5-enterprise
+    networks: [internal_intel_net]
+    environment:
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
+      # Requisito legal de la imagen Enterprise (sin él el contenedor no arranca).
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+      NEO4J_server_memory_heap_max__size: "2G"
+      NEO4J_server_memory_pagecache_size: "1G"
+    volumes:
+      - neo4j_data:/data
+      - ../contracts/graph-constraints.cypher:/constraints/graph-constraints.cypher:ro
+    restart: unless-stopped
+    # PROHIBIDO añadir "ports:" aquí (Regla 4). Editar solo desde backend.

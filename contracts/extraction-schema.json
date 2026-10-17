@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osint-nexus/contracts/extraction-schema.json",
+  "$comment": "SEALED v2.0.0 — 2026-10-17 — Agente 0. Deriva de SPEC-02 v2.0 §2. report_id lo asigna el servidor. Cambios requieren nuevo sello en SEAL.md.",
+  "title": "OSINT_Informant_Extraction_Contract_v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["report_metadata", "extracted_triplets", "analytical_context_links"],
+  "properties": {
+    "report_metadata": { "$ref": "#/$defs/report_metadata" },
+    "extracted_triplets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/triplet" }
+    },
+    "analytical_context_links": {
+      "type": "array",
+      "description": "Referencias obligatorias hacia Análisis humanos existentes o IntelRequirement abiertos.",
+      "items": { "$ref": "#/$defs/analytical_context_link" }
+    }
+  },
+  "$defs": {
+    "report_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "source_type", "source_url_or_origin", "reliability_rating"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "source_type": { "type": "string", "enum": ["OSINT_PDF", "NEWS", "TELEGRAM", "RSS", "PUBLIC_REGISTRY"] },
+        "source_url_or_origin": { "type": "string" },
+        "reliability_rating": { "type": "string", "enum": ["A", "B", "C", "D", "E", "F"] }
+      }
+    },
+    "entityLabel": {
+      "type": "string",
+      "enum": ["Person", "Organization", "CyberAsset", "Location", "Event"],
+      "description": "Las 5 entidades OSINT extraíbles (SPEC-01 §1 v2.0)."
+    },
+    "predicateType": {
+      "type": "string",
+      "enum": ["CONTROLS", "FINANCED", "USES_ASSET", "LOCATED_AT", "ASSOCIATED_WITH", "PARTICIPATED_IN"],
+      "description": "Debe existir como arista OSINT permitida en SPEC-01 §3.1."
+    },
+    "linkCategory": {
+      "type": "string",
+      "enum": ["CORROBORATES", "CONTRADICTS", "EXTENDS", "ANSWERS_REQUIREMENT"],
+      "description": "Vínculo con el trabajo del Analista (SPEC-01 §3.2)."
+    },
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "name"],
+      "properties": {
+        "existing_canonical_id": { "type": ["string", "null"] },
+        "label": { "$ref": "#/$defs/entityLabel" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "attributes": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "predicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "confidence"],
+      "properties": {
+        "type": { "$ref": "#/$defs/predicateType" },
+        "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["page_number", "exact_quote"],
+      "properties": {
+        "page_number": { "type": "integer", "minimum": 1 },
+        "char_start": { "type": "integer", "minimum": 0 },
+        "char_end": { "type": "integer", "minimum": 0 },
+        "exact_quote": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      }
+    },
+    "triplet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "predicate", "object", "provenance"],
+      "properties": {
+        "subject": { "$ref": "#/$defs/entity" },
+        "predicate": { "$ref": "#/$defs/predicate" },
+        "object": { "$ref": "#/$defs/entity" },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "analytical_context_link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_id", "link_category", "confidence", "coherence_justification", "exact_quote"],
+      "properties": {
+        "target_id": { "type": "string", "description": "UUID del nodo Analysis o IntelRequirement." },
+        "link_category": { "$ref": "#/$defs/linkCategory" },
+        "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "coherence_justification": { "type": "string", "minLength": 1 },
+        "exact_quote": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: theme("colors.base.950");
+  color: theme("colors.slate.100");
+}
+
+/* Scrollbars tácticos (Midjourney ref §1) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: theme("colors.base.600") transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: theme("colors.base.600");
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Foco visible accesible (contraste AA, SPEC-05 §5) */
+:focus-visible {
+  outline: 2px solid theme("colors.neon.cyan");
+  outline-offset: 2px;
+}

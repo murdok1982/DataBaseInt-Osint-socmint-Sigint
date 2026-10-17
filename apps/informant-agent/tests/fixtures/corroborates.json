@@ -1,0 +1,24 @@
+{
+  "title": "State Bank financing of Acme Corp",
+  "source_type": "NEWS",
+  "source_url_or_origin": "https://news.example.test/acme-financing",
+  "reliability_rating": "B",
+  "keywords": ["State Bank", "Acme Corp"],
+  "entity_hints": ["Acme Corp"],
+  "pages": [
+    {
+      "page_number": 1,
+      "text": "State Bank financed Acme Corp in 2021."
+    }
+  ],
+  "assertions": [
+    {
+      "subject_name": "State Bank",
+      "predicate": "FINANCED",
+      "object_name": "Acme Corp",
+      "quote": "State Bank financed Acme Corp",
+      "page_number": 1,
+      "confidence": 0.8
+    }
+  ]
+}

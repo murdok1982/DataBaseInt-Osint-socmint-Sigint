@@ -1,0 +1,35 @@
+{
+  "name": "osint-nexus-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OSINT Nexus — Dashboard (SPEC-05). Tipos derivados de contracts/openapi.yaml.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "gen:api": "openapi-typescript ../../contracts/openapi.yaml -o src/types/api.d.ts"
+  },
+  "dependencies": {
+    "cytoscape": "^3.30.2",
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.2",
+    "@types/cytoscape": "^3.21.4",
+    "@types/node": "^20.16.10",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.15",
+    "openapi-typescript": "^7.4.1",
+    "postcss": "^8.4.47"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

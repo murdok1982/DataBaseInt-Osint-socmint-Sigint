@@ -1,0 +1,52 @@
+# =====================================================================
+# Backend — OSINT Nexus. Dependencias consolidadas.
+# Autorizado por: SPEC-00 §2 (Backend Python) · SPEC-01 (grafo/Entity
+# Resolution, Agente 1) · SPEC-02 (ingesta NLP, Agente 2) · SPEC-03/04
+# (API, GraphRAG, seguridad, Agente 3).
+# Propietario de la consolidación: Agente 3 (DevOps/Sec).
+# =====================================================================
+
+# --- Base de datos de grafos (SPEC-01 §6) — Agente 1 ---
+neo4j>=5,<6
+
+# --- Validación de modelos de datos (SPEC-01 §1) — Agente 1 ---
+pydantic>=2,<3
+
+# --- API REST (SPEC-03 §1) — Agente 3 ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+#: multipart/form-data de POST /api/v1/ingest (SPEC-03 §4).
+python-multipart>=0.0.9
+
+# --- Configuración por entorno (SPEC-04 §2) — Agente 3 ---
+pydantic-settings>=2
+
+# --- Seguridad: JWT + Argon2id (SPEC-04 §2) — Agente 3 ---
+#: Backend JWT preferente. Alternativa equivalente permitida por el
+#: prompt: python-jose[cryptography]>=3.3 (app/core/security.py la soporta).
+pyjwt>=2.8
+#: Hash de contraseñas Argon2id — obligatorio por SPEC-04 §2.
+argon2-cffi>=23
+
+# --- Ingesta: recepción y almacenamiento del informe (SPEC-02 §1) — Agente 3 ---
+#: Lectura de páginas de PDF para el pipeline de ingesta (SPEC-02 §1.1/§1.3).
+pypdf>=5
+
+# --- Ingesta NLP: validación estricta contra el contrato (SPEC-02 §2/§6) — Agente 2 ---
+#: Validador JSON Schema (draft 2020-12) para extraction-schema.json.
+#: El código degrada a un validador mínimo propio si no está instalado.
+jsonschema>=4,<5
+
+# --- Cola / caché (SPEC-02 §5: Celery + Redis; red interna, sin puertos) ---
+redis>=5
+#: Worker de ingesta (SPEC-02 §5). Dependencia declarada por spec; la tarea
+#: vive en app/workers/tasks.py. La API la encola solo si hay broker
+#: configurado (CELERY_BROKER_URL/REDIS_URL); si no, ejecuta el pipeline en
+#: BackgroundTasks (SPEC-GAP-3.6, resuelto con degradación controlada).
+celery>=5
+
+# --- Verificación Cruzada / tests de aceptación (Constitución, Regla 5) ---
+pytest>=8
+pytest-cov
+#: Cliente de test de FastAPI (TestClient) — SPEC-04 §4.
+httpx>=0.27

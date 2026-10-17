@@ -1,0 +1,2 @@
+# Webroot ACME (Let's Encrypt / certbot) — servido por Nginx en
+# /.well-known/acme-challenge/. Vacío salvo durante la emisión/renovación.
