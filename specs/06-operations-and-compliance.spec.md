@@ -93,7 +93,7 @@ detalles internos (sobre `{error:{code,message}}` de SPEC-03 §1).
 | `PREFLIGHT_SECRET` | Ídem | Invalida los `preflight_token` vigentes |
 | API Key M2M | `init-api-keys.py` emite una nueva; la anterior se marca `revoked: true` | La clave revocada responde `401` |
 | `NEO4J_PASSWORD` | `ALTER USER` en Neo4j + `.env` + recrear backend/worker | — |
-| Secreto TOTP de un operador | Regenerar con `init-admin-user.py --totp` | El código anterior deja de valer |
+| Secreto TOTP de un operador | Volver a ejecutar `init-admin-user.py` (genera siempre un secreto TOTP nuevo para ADMIN) | El código anterior deja de valer |
 
 Rotación mínima: **cada 90 días** y de inmediato ante sospecha de compromiso.
 
