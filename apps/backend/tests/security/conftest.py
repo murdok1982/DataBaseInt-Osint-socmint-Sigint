@@ -365,6 +365,20 @@ class FakeGraphRepository:
         record = self.analyses.get(analysis_id)
         return dict(record) if record else None
 
+    def list_analyses(self, status: Optional[str] = None) -> list[dict[str, Any]]:
+        return [
+            dict(record)
+            for record in self.analyses.values()
+            if status is None or record.get("status") == status
+        ]
+
+    def list_requirements(self, analysis_id: str) -> list[dict[str, Any]]:
+        return [
+            dict(req)
+            for req in self.requirements
+            if req.get("parent_analysis_id") == analysis_id
+        ]
+
     def update_analysis(
         self, analysis_id: str, patch: dict[str, Any]
     ) -> Optional[dict[str, Any]]:

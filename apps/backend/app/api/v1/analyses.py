@@ -271,6 +271,33 @@ async def create_intel_requirement(
     return IntelRequirement(**result)
 
 
+# =====================================================================
+# GET /analyses/{id}/requirements — listAnalysisRequirements (VIEWER+)
+# =====================================================================
+@router.get(
+    "/{id}/requirements",
+    operation_id="listAnalysisRequirements",
+    response_model=IntelRequirementList,
+    summary="Lista los RFI del expediente (VIEWER+)",
+    responses={
+        403: {"description": "Rol insuficiente (RBAC SPEC-04)"},
+        404: {"description": "Expediente no encontrado (SPEC-03 §6)"},
+    },
+)
+async def list_analysis_requirements(
+    id: str,
+    user: Principal = Depends(require_role(Role.VIEWER)),
+    gateway: GraphGateway = Depends(get_graph_gateway),
+) -> IntelRequirementList:
+    """RFI vinculados al expediente ``id``; 404 si el expediente no existe."""
+    if gateway.get_analysis(id) is None:
+        raise _not_found("Expediente", id)
+    payload = gateway.list_requirements(id)
+    return IntelRequirementList(
+        items=[IntelRequirement(**item) for item in payload["items"]]
+    )
+
+
 __all__ = [
     "router",
     "Analysis",

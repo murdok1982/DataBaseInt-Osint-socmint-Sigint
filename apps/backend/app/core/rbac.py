@@ -156,7 +156,7 @@ MIN_ROLE_BY_PERMISSION: dict[Permission, Optional[Role]] = {
 # =====================================================================
 # Conjuntos de actores autorizados por operación (fuente de verdad RBAC)
 # =====================================================================
-#: Actores autorizados por ``operationId`` del contrato SELLADO v2.0.0.
+#: Actores autorizados por ``operationId`` del contrato SELLADO v2.1.0.
 #: ``None`` = endpoint público (``security: []``).
 ALLOWED_ROLES_BY_OPERATION: dict[str, Optional[FrozenSet[Role]]] = {
     # --- auth (SPEC-03 §3) ---
@@ -184,9 +184,11 @@ ALLOWED_ROLES_BY_OPERATION: dict[str, Optional[FrozenSet[Role]]] = {
     "getReportFile": HUMAN_ROLES,
     "getReportChunks": HUMAN_ROLES,
     # --- analyses (SPEC-03 §6) ---
+    "listAnalyses": HUMAN_ROLES,
     "createAnalysis": frozenset({Role.ADMIN, Role.ANALYST}),
     "getAnalysis": HUMAN_ROLES,
     "updateAnalysis": frozenset({Role.ADMIN, Role.ANALYST}),
+    "listAnalysisRequirements": HUMAN_ROLES,
     "createIntelRequirement": frozenset({Role.ADMIN, Role.ANALYST}),
     # --- coherence (SPEC-03 §6) ---
     "listCoherenceAlerts": frozenset({Role.ADMIN, Role.ANALYST}),
@@ -249,9 +251,16 @@ ENDPOINT_MATRIX: tuple[tuple[str, str, str, Optional[Permission]], ...] = (
     ("GET", "/api/v1/reports/{id}", "getReport", Permission.GRAPH_READ),
     ("GET", "/api/v1/reports/{id}/file", "getReportFile", Permission.GRAPH_READ),
     ("GET", "/api/v1/reports/{id}/chunks", "getReportChunks", Permission.GRAPH_READ),
+    ("GET", "/api/v1/analyses", "listAnalyses", Permission.GRAPH_READ),
     ("POST", "/api/v1/analyses", "createAnalysis", Permission.ANALYSIS_WRITE),
     ("GET", "/api/v1/analyses/{id}", "getAnalysis", Permission.GRAPH_READ),
     ("PUT", "/api/v1/analyses/{id}", "updateAnalysis", Permission.ANALYSIS_WRITE),
+    (
+        "GET",
+        "/api/v1/analyses/{id}/requirements",
+        "listAnalysisRequirements",
+        Permission.GRAPH_READ,
+    ),
     (
         "POST",
         "/api/v1/analyses/{id}/requirements",
