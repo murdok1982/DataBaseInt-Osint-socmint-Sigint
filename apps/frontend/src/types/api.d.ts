@@ -13,7 +13,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Login del operador (JWT; 2FA si está activo) */
+        /** Login del operador (JWT; 2FA obligatorio para ADMIN, SPEC-04 §2) */
         post: operations["authLogin"];
         delete?: never;
         options?: never;
@@ -623,13 +623,14 @@ export interface components {
             username: string;
             /** Format: password */
             password: string;
+            /** @description TOTP RFC 6238 (obligatorio para ADMIN, SPEC-04 §2) */
             totp_code?: string;
         };
         TokenResponse: {
             access_token: string;
             /** @enum {string} */
             token_type: "bearer";
-            /** @description Segundos; 1800 = 30 min (SPEC-04) */
+            /** @description Segundos; 900 = 15 min (SPEC-04 §2 v2.2) */
             expires_in: number;
         };
         User: {
@@ -683,6 +684,17 @@ export interface components {
                 "application/json": components["schemas"]["Error"];
             };
         };
+        /** @description Demasiados intentos fallidos de login (SPEC-04 §2.1) */
+        TooManyRequests: {
+            headers: {
+                /** @description Segundos hasta que se levante el bloqueo */
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
     };
     parameters: never;
     requestBodies: never;
@@ -714,6 +726,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     authRefresh: {

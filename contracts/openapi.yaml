@@ -1,11 +1,12 @@
 openapi: 3.1.0
 info:
   title: OSINT Nexus API
-  version: 2.1.0
+  version: 2.2.0
   description: >
     Contrato compartido Backend (FastAPI) ↔ Frontend (React) ↔ Informant Agent.
-    Deriva de SPEC-03 y SPEC-04 v2.0. Estado: SELLADO v2.1.0 (2026-10-17).
+    Deriva de SPEC-03, SPEC-04 v2.2 y SPEC-06. Estado: SELLADO v2.2.0 (2026-10-17).
     Autenticación: JWT Bearer (humanos) o API Key M2M (AI_INFORMANT).
+    Toda respuesta incluye la cabecera X-Request-ID (SPEC-06 §1.3).
   license:
     name: Proprietary
 servers:
@@ -38,7 +39,7 @@ paths:
     post:
       tags: [auth]
       operationId: authLogin
-      summary: Login del operador (JWT; 2FA si está activo)
+      summary: Login del operador (JWT; 2FA obligatorio para ADMIN, SPEC-04 §2)
       security: []
       requestBody:
         required: true
@@ -52,6 +53,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TokenResponse' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /auth/refresh:
     post:
@@ -762,7 +764,7 @@ components:
       properties:
         username: { type: string }
         password: { type: string, format: password }
-        totp_code: { type: string }
+        totp_code: { type: string, pattern: '^[0-9]{6}$', description: 'TOTP RFC 6238 (obligatorio para ADMIN, SPEC-04 §2)' }
 
     TokenResponse:
       type: object
@@ -770,7 +772,7 @@ components:
       properties:
         access_token: { type: string }
         token_type: { type: string, enum: [bearer] }
-        expires_in: { type: integer, description: 'Segundos; 1800 = 30 min (SPEC-04)' }
+        expires_in: { type: integer, maximum: 900, description: 'Segundos; 900 = 15 min (SPEC-04 §2 v2.2)' }
 
     User:
       type: object
@@ -806,6 +808,15 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     Conflict:
       description: Conflicto (p. ej. ingesta ciega sin Pre-Flight, o nodo bloqueado)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooManyRequests:
+      description: Demasiados intentos fallidos de login (SPEC-04 §2.1)
+      headers:
+        Retry-After:
+          description: Segundos hasta que se levante el bloqueo
+          schema: { type: integer, minimum: 1 }
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
