@@ -5,7 +5,14 @@
 #
 # Neo4j y Redis NO publican puertos. El worker Celery tampoco.
 # Solo Nginx expone 80/443 (único punto de entrada TLS, SPEC-04 §3).
+# SPEC-06 §4: todos los servicios rotan logs (json-file 10 MB x 10).
 # =====================================================================
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "10"
 
 networks:
   public_net:
@@ -18,10 +25,12 @@ volumes:
   neo4j_data:
   redis_data:
   reports_data:              # informes + chunks (STORAGE_RAW_DIR/STORAGE_CHUNKS_DIR)
+  neo4j_backups:             # destino temporal de neo4j-admin backup (SPEC-06 §3)
 
 services:
   nginx:
     image: nginx:1.27-alpine
+    logging: *default-logging
     networks: [public_net]
     ports:
       - "80:80"
@@ -37,6 +46,7 @@ services:
 
   frontend:
     build: ../apps/frontend
+    logging: *default-logging
     networks: [public_net]
     environment:
       NEXT_PUBLIC_API_BASE: "https://${PUBLIC_HOSTNAME}/api/v1"
@@ -47,9 +57,21 @@ services:
   backend:
     build: ../apps/backend
     image: osint-nexus-backend:latest
+    logging: *default-logging
     networks: [public_net, internal_intel_net]
     env_file: [.env]
     depends_on: [neo4j, redis]
+    # SPEC-06 §4: salud sobre el endpoint público del contrato (getInfo).
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/info', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     volumes:
       # SPEC-02 §1.2: informes crudos (raw_reports) y chunks procesados.
       # STORAGE_RAW_DIR/STORAGE_CHUNKS_DIR apuntan a /storage (ver .env).
@@ -64,14 +86,18 @@ services:
   # --- Worker Celery (SPEC-02 §5) -----------------------------------
   # Ejecuta el pipeline de ingesta ``preflight → chunk → extract → validate →
   # coherence → resolve → persist`` reutilizando la imagen del backend.
-  # Red interna (Constitución Regla 4): sin ``ports:``, sin acceso directo.
+  # Sin ``ports:`` (Constitución Regla 4). Dual-homed (SPEC-04 §2 v2.2):
+  # ``internal_intel_net`` (Redis/Neo4j) + ``public_net`` solo para el egreso
+  # al proveedor de inferencia configurado; ``internal_intel_net`` es
+  # ``internal: true`` y por sí sola no tiene salida a Internet.
   # La app Celery es ``app.workers.celery_app:celery_app`` (APP_NAME="osint") y
   # la tarea es ``osint.workers.ingest_report`` (app/workers/tasks.py), que se
   # registra importando ``app.workers.tasks`` (--include).
   worker:
     build: ../apps/backend
     image: osint-nexus-backend:latest
-    networks: [internal_intel_net]
+    logging: *default-logging
+    networks: [public_net, internal_intel_net]
     env_file: [.env]
     depends_on: [redis, backend]
     command:
@@ -98,6 +124,7 @@ services:
       context: ../apps/informant-agent
       dockerfile: ../../deploy/informant-agent.Dockerfile
     image: osint-informant-agent:latest
+    logging: *default-logging
     networks: [internal_intel_net]
     env_file: [.env]
     environment:
@@ -116,6 +143,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    logging: *default-logging
     networks: [internal_intel_net]
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
@@ -127,9 +155,12 @@ services:
     # Enterprise es OBLIGATORIO por el contrato sellado: SPEC-01/graph-constraints
     # usa constraints de EXISTENCIA de propiedades (``REQUIRE n.prop IS NOT NULL``),
     # disponibles solo en Enterprise Edition (Community las ignora/falla).
-    # El índice vectorial de ``entity_embedding_idx`` sí existe en Community,
-    # pero el contrato completo exige Enterprise. Ver deploy/README.md §Neo4j.
+    # Los índices vectoriales por label (``person_embedding_idx``…, contrato
+    # v2.1.0) sí existen en Community, pero el contrato completo exige
+    # Enterprise, que además permite la copia en caliente de SPEC-06 §3.
+    # Ver deploy/README.md §Neo4j.
     image: neo4j:5-enterprise
+    logging: *default-logging
     networks: [internal_intel_net]
     environment:
       NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
@@ -139,6 +170,7 @@ services:
       NEO4J_server_memory_pagecache_size: "1G"
     volumes:
       - neo4j_data:/data
+      - neo4j_backups:/backups
       - ../contracts/graph-constraints.cypher:/constraints/graph-constraints.cypher:ro
     restart: unless-stopped
     # PROHIBIDO añadir "ports:" aquí (Regla 4). Editar solo desde backend.

@@ -2,8 +2,11 @@
 """
 init-admin-user.py — Crea el primer operador ADMIN de OSINT Nexus.
 
-Deriva de SPEC-04 §4/§5.1. Requisitos:
+Deriva de SPEC-04 §2/§4/§5.1 (v2.2). Requisitos:
 - Contraseña hasheada con Argon2id (nunca texto plano, nunca por defecto).
+- **2FA TOTP obligatorio para ADMIN** (SPEC-04 §2): se genera siempre un secreto
+  TOTP nuevo (160 bits, base32) y su URI ``otpauth://`` para la app
+  autenticadora. Volver a ejecutar el script rota el secreto (SPEC-06 §5).
 - Sin credenciales por defecto: si no se pasan argumentos, se piden de forma
   interactiva (getpass) y se valida un mínimo de seguridad.
 - Idempotente en su *salida*: no sobrescribe nada por sí mismo; imprime un
@@ -22,11 +25,14 @@ de un solo ADMIN (``OSINT_ADMIN_USERNAME`` / ``OSINT_ADMIN_PASSWORD_HASH``).
 from __future__ import annotations
 
 import argparse
+import base64
 import getpass
 import json
 import os
+import secrets
 import sys
 import uuid
+from urllib.parse import quote
 
 try:
     from argon2 import PasswordHasher
@@ -62,19 +68,37 @@ def prompt_credentials(username: str | None) -> tuple[str, str]:
     return username, password
 
 
-def build_record(username: str, password_hash: str, user_id: str | None) -> dict:
+def generate_totp_secret() -> str:
+    """Secreto TOTP base32 de 160 bits (RFC 4226 §4), sin relleno."""
+    return base64.b32encode(secrets.token_bytes(20)).decode("ascii").rstrip("=")
+
+
+def otpauth_uri(username: str, secret: str, issuer: str = "OSINT Nexus") -> str:
+    """URI ``otpauth://`` para dar de alta el secreto en la app autenticadora."""
+    label = quote(f"{issuer}:{username}")
+    return (
+        f"otpauth://totp/{label}?secret={secret}&issuer={quote(issuer)}"
+        "&algorithm=SHA1&digits=6&period=30"
+    )
+
+
+def build_record(
+    username: str, password_hash: str, user_id: str | None, totp_secret: str
+) -> dict:
     """Entrada de ``OSINT_USERS_JSON`` / nodo ``User`` (SPEC-04 §5.1)."""
     return {
         "id": user_id or str(uuid.uuid4()),
         "username": username,
         "password_hash": password_hash,
         "role": "ADMIN",
+        "totp_secret": totp_secret,
     }
 
 
 def create_admin(username: str, password: str, user_id: str | None = None) -> None:
     password_hash = _pwd_hasher.hash(password)  # Argon2id (PHC $argon2id$...)
-    record = build_record(username, password_hash, user_id)
+    totp_secret = generate_totp_secret()
+    record = build_record(username, password_hash, user_id, totp_secret)
 
     print("")
     print("[OK] Usuario ADMIN preparado (Argon2id).")
@@ -86,6 +110,11 @@ def create_admin(username: str, password: str, user_id: str | None = None) -> No
     print("     -- Opción B: un solo ADMIN ---------------------------------")
     print(f"     OSINT_ADMIN_USERNAME={username}")
     print(f"     OSINT_ADMIN_PASSWORD_HASH={password_hash}")
+    print(f"     OSINT_ADMIN_TOTP_SECRET={totp_secret}")
+    print("")
+    print("     -- 2FA (obligatorio para ADMIN, SPEC-04 §2) -----------------")
+    print("     Da de alta este URI en la app autenticadora y destrúyelo después:")
+    print(f"     {otpauth_uri(username, totp_secret)}")
     print("")
     print("     Tras editar .env: docker compose ... up -d --force-recreate backend")
     print("     Hash (no compartir en claro):", password_hash[:24] + "…")

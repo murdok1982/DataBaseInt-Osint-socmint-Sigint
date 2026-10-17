@@ -4,7 +4,8 @@
 #
 # Autorizado por:
 #   - SPEC-04 §2 (Neo4j en internal_intel_net, sin ports publicados).
-#   - contracts/graph-constraints.cypher (SELLADO v2.0.0).
+#   - contracts/graph-constraints.cypher (SELLADO v2.1.0: índice vectorial
+#     por label; ya no hay índice multi-label ni SPEC-GAP-3.8).
 #
 # Idempotente: el contrato usa ``CREATE ... IF NOT EXISTS``; reejecutarlo no
 # duplica ni rompe objetos. Se ejecuta contra el contenedor vivo:
@@ -19,10 +20,9 @@
 #     COMPOSE_FILE        compose de producción(def. <deploy>/docker-compose.prod.yml)
 #     NEO4J_USER          usuario              (def. neo4j)
 #     NEO4J_PASSWORD      contraseña           (def. del .env; obligatoria)
-#     STRICT_VECTOR_INDEX 1 => el SPEC-GAP del índice vectorial cuenta como fallo
 #
-# Salida: 0 si se aplican/verifican los objetos (salvo SPEC-GAP vectorial,
-#         documentado); != 0 ante cualquier desviación real.
+# Salida: 0 si se aplican y verifican todos los objetos del contrato;
+#         != 0 ante cualquier desviación.
 # =====================================================================
 set -euo pipefail
 
@@ -34,8 +34,6 @@ ENV_FILE="${ENV_FILE:-${DEPLOY_DIR}/.env}"
 
 #: Ruta del contrato DENTRO del contenedor neo4j (bind-mount ro del compose).
 CONSTRAINTS_IN_CONTAINER="/constraints/graph-constraints.cypher"
-
-STRICT_VECTOR_INDEX="${STRICT_VECTOR_INDEX:-0}"
 
 # --- Credenciales (del .env o del entorno) ----------------------------
 if [[ -f "${ENV_FILE}" ]]; then
@@ -76,7 +74,8 @@ EXPECTED_INDEXES=(
   person_name_idx organization_regid_idx cyberasset_value_idx location_name_idx
   event_date_idx report_ingested_idx analysis_status_idx requirement_status_idx
   alert_status_idx entity_locked_idx
-  entity_names_ft entity_embedding_idx
+  entity_names_ft
+  person_embedding_idx organization_embedding_idx cyberasset_embedding_idx
 )
 
 # =====================================================================
@@ -126,13 +125,9 @@ for name in "${EXPECTED_CONSTRAINTS[@]}"; do
   fi
 done
 
-vector_missing=0
 for name in "${EXPECTED_INDEXES[@]}"; do
   if has "${indexes}" "${name}"; then
     echo "  [OK]    índice ${name}"
-  elif [[ "${name}" == "entity_embedding_idx" ]]; then
-    vector_missing=1
-    echo "  [GAP]   índice vectorial ${name} (ver SPEC-GAP-3.8)" >&2
   else
     echo "  [FALTA] índice ${name}" >&2
     missing=$((missing + 1))
@@ -147,30 +142,8 @@ if [[ "${missing}" -gt 0 ]]; then
   exit 1
 fi
 
-if [[ "${vector_missing}" -eq 1 ]]; then
-  cat >&2 <<'EOF'
-RESULTADO: contrato aplicado SALVO el índice vectorial multi-label.
-
-SPEC-GAP-3.8 (contract/pipeline): contracts/graph-constraints.cypher declara
-    CREATE VECTOR INDEX entity_embedding_idx
-    FOR (n:Person|Organization|CyberAsset) ON (n.canonical_name_embedding) ...
-Neo4j 5.x solo admite índices vectoriales de UN ÚNICO label (el multi-label
-llegó en Neo4j 2026.01+), por lo que este índice no se crea en neo4j:5-*.
-Opciones (requieren decisión del Orquestador; el contrato está SELLADO):
-  (a) subir la imagen a neo4j:2026.01-enterprise o superior; o
-  (b) desdoblar el índice en uno por label (nuevo sello del contrato).
-El resto de constraints (incluidas las de EXISTENCIA, exclusivas de
-Enterprise) e índices quedan aplicados y verificados.
-EOF
-  if [[ "${STRICT_VECTOR_INDEX}" == "1" ]]; then
-    echo "RESULTADO: STRICT_VECTOR_INDEX=1 ⇒ fallo." >&2
-    exit 1
-  fi
-  exit 0
-fi
-
 if [[ "${apply_rc}" -ne 0 ]]; then
-  echo "RESULTADO: la aplicación reportó errores no atribuibles al índice vectorial." >&2
+  echo "RESULTADO: cypher-shell reportó errores al aplicar el contrato." >&2
   exit 1
 fi
 

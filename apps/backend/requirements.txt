@@ -45,8 +45,5 @@ redis>=5
 #: BackgroundTasks (SPEC-GAP-3.6, resuelto con degradación controlada).
 celery>=5
 
-# --- Verificación Cruzada / tests de aceptación (Constitución, Regla 5) ---
-pytest>=8
-pytest-cov
-#: Cliente de test de FastAPI (TestClient) — SPEC-04 §4.
-httpx>=0.27
+# Las dependencias de test y análisis estático viven en requirements-dev.txt
+# (no se instalan en la imagen de producción).

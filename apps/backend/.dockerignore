@@ -1,0 +1,13 @@
+# Imagen de producción: solo el código de la aplicación (sin tests ni cachés).
+tests/
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+**/__pycache__/
+**/*.py[cod]
+requirements-dev.txt
+pytest.ini
+.env
+.env.*
