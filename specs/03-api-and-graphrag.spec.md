@@ -8,6 +8,7 @@
 - Autenticación: **JWT `Bearer`** (humanos) y **API Key M2M** `X-API-Key` (IA).
 - Errores: `{ "error": { "code": String, "message": String } }`.
 - Paginación: `?limit` (def. 50, máx 500) y `?cursor`.
+- Correlación: toda respuesta incluye la cabecera `X-Request-ID` (SPEC-06 §1.3).
 
 ## 2. Roles (nombres canónicos v2.0)
 `ADMIN`, `ANALYST` (analista humano; **sustituye a `OPERATOR`**), `VIEWER`, y el
@@ -16,7 +17,7 @@ principal M2M `AI_INFORMANT` (no es un `User`; se autentica por API Key, SPEC-04
 ## 3. Autenticación (`/auth`)
 | Método | Ruta | Descripción | Rol mínimo |
 | :--- | :--- | :--- | :--- |
-| POST | `/api/v1/auth/login` | Login → access + refresh cookie (2FA si está activo) | público |
+| POST | `/api/v1/auth/login` | Login → access + refresh cookie (2FA según SPEC-04 §2; `429` por fuerza bruta, SPEC-04 §2.1) | público |
 | POST | `/api/v1/auth/refresh` | Renueva access token | autenticado |
 | POST | `/api/v1/auth/logout` | Invalida refresh token | autenticado |
 | GET | `/api/v1/auth/me` | Perfil y rol del operador | autenticado |

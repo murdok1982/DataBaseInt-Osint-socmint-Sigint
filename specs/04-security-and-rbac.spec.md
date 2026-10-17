@@ -1,4 +1,4 @@
-# SPEC-04: Seguridad, RBAC (Humano + M2M) y VPS (v2.0)
+# SPEC-04: Seguridad, RBAC (Humano + M2M) y VPS (v2.2)
 
 > Spec rectora del **Agente 3 (DevOps/Sec)**. Contrato derivado:
 > `/contracts/openapi.yaml` (seguridad) y `/deploy/**`.
@@ -23,13 +23,39 @@
 
 ## 2. Requisitos de Red y Cifrado
 - Contraseñas hasheadas exclusivamente con **Argon2id**.
-- Access token JWT (**30 min**) + Refresh Token en cookie `HttpOnly`/`Secure`.
-- **2FA (TOTP)** obligatorio para `ADMIN` y opcional/recomendado para `ANALYST`.
+- Access token JWT de **15 min** (`expires_in = 900`) + Refresh Token de **7 días**
+  en cookie `HttpOnly`/`Secure`/`SameSite=Strict`. *(v2.2: antes 30 min; se alinea
+  con la política de seguridad del equipo, máx. 15 min.)* La configuración
+  rechaza valores superiores (15 min / 7 días) al arrancar.
+- **2FA (TOTP, RFC 6238)** — SHA-1, periodo 30 s, 6 dígitos, tolerancia ±1 periodo:
+  - **Obligatorio para `ADMIN`**: un `ADMIN` sin `totp_secret` configurado **no
+    puede iniciar sesión** (`401`). Solo un entorno de desarrollo puede relajarlo
+    de forma explícita (`ADMIN_TOTP_REQUIRED=false`, prohibido en producción).
+  - Opcional/recomendado para `ANALYST` y `VIEWER`; si el operador tiene
+    `totp_secret`, el código pasa a ser obligatorio para él.
+  - Un código TOTP ya usado no se acepta de nuevo (anti-repetición).
+  - El fallo de 2FA responde `401` con el mismo mensaje genérico que una
+    contraseña errónea (no revela qué factor falló).
 - API Keys M2M: almacenadas **hasheadas** (Argon2id) en el nodo `ApiKey`; se
   presentan en `X-API-Key`; nunca se registran en claro.
 - Docker Compose con dos redes: `public_net` (Nginx + Frontend) e
-  `internal_intel_net` (Backend, Redis, Neo4j, Informant Agent).
+  `internal_intel_net` (Backend, Redis, Neo4j, Informant Agent). `internal_intel_net`
+  es `internal: true` (sin salida a Internet). Solo **backend** y **worker** son
+  *dual-homed* (`public_net` + `internal_intel_net`): el backend para recibir de
+  Nginx y el worker para el egreso al proveedor de inferencia configurado
+  (único destino externo autorizado). Neo4j y Redis viven **solo** en la red interna.
 - **TLS 1.3** terminado en Nginx; HSTS.
+
+### 2.1 Protección contra fuerza bruta (v2.2)
+- **Aplicación:** tras **5 intentos fallidos** de login en una ventana de
+  **15 min** para la misma pareja (IP de cliente, usuario), `POST /auth/login`
+  responde `429 TOO_MANY_REQUESTS` con cabecera `Retry-After` (segundos) hasta
+  que expire la ventana, **incluso si la contraseña es correcta**. Un login
+  correcto antes del bloqueo reinicia el contador.
+- **Perímetro:** Nginx limita `/api/v1/auth/login` a **10 peticiones/min por IP**
+  (`limit_req`), defensa en profundidad independiente del número de workers.
+- La IP de cliente se toma de `X-Real-IP` solo cuando la petición llega desde
+  el proxy de confianza (Nginx en la red interna); si no, de la conexión TCP.
 
 ## 3. Hardening del VPS
 - Firewall UFW: solo 22 (SSH restringido), 80 y 443; el resto cerrado.
@@ -41,7 +67,10 @@
 ## 4. Criterios de Aceptación
 - [ ] Las 28 celdas de la matriz se cumplen: cada "No" devuelve `403`.
 - [ ] No existe ningún `ports:` para Neo4j/Redis en producción.
-- [ ] JWT de 30 min verificado; refresh solo por cookie `HttpOnly`/`Secure`.
+- [ ] JWT de 15 min verificado; refresh solo por cookie `HttpOnly`/`Secure`; la
+      configuración rechaza expiraciones superiores.
+- [ ] Un `ADMIN` sin TOTP, o con TOTP inválido/reutilizado, recibe `401`.
+- [ ] El 6.º intento fallido de login en 15 min devuelve `429` con `Retry-After`.
 - [ ] API Key M2M verificada con hash; `AI_INFORMANT` no puede llamar a `/analyses/*` ni resolver alertas.
 - [ ] `init-admin-user.py` no usa credenciales por defecto.
 - [ ] `vps-hardening.sh` es idempotente.

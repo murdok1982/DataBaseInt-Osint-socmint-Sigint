@@ -59,3 +59,7 @@ Analista resuelve alertas y actualiza la conclusión (única autoridad sobre la 
 | SPEC-03 | API REST/WS (Analistas) y M2M (Informante IA); GraphRAG |
 | SPEC-04 | Seguridad: JWT/Argon2id + API Keys M2M + RBAC + VPS |
 | SPEC-05 | UI: grafo, dossier PDF, workspace analítico, bandeja de coherencia |
+| SPEC-06 | Operación y cumplimiento: bitácora de auditoría, retención, backups, observabilidad, rotación de secretos |
+
+Trazabilidad criterio de aceptación → evidencia: `specs/TRACEABILITY.md`
+(verificada por `scripts/audit_sdd.py`).
