@@ -45,12 +45,14 @@ from app.api.graph_gateway import GraphGateway  # noqa: E402
 from app.core.apikeys import InMemoryApiKeyStore, hash_api_key  # noqa: E402
 from app.core.config import reset_settings_cache  # noqa: E402
 from app.core.jobs import InMemoryJobRegistry, reset_job_registry  # noqa: E402
+from app.core.login_guard import reset_login_guards  # noqa: E402
 from app.core.rbac import Role  # noqa: E402
 from app.core.security import (  # noqa: E402
     ARGON2_AVAILABLE,
     create_access_token,
     hash_password,
     reset_hasher_cache,
+    totp_now,
 )
 from app.core.users import InMemoryUserStore, UserRecord  # noqa: E402
 from app.db.repository import NodeLockedError  # noqa: E402
@@ -72,13 +74,16 @@ API_KEY_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd"
 #: Contraseña de laboratorio usada solo en tests (nunca en despliegue).
 TEST_PASSWORD = "test-password-arg2id"
 
+#: Secreto TOTP de laboratorio del ADMIN (SPEC-04 §2: 2FA obligatorio para ADMIN).
+ADMIN_TOTP_SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
+
 #: API Key M2M de laboratorio (solo tests). El almacén guarda su hash Argon2id.
 API_KEY = "test-m2m-api-key-informant"
 INFORMANT_CLIENT_NAME = "informant-agent"
 
 
 # =====================================================================
-# Entorno de pruebas (SPEC-04 §2: JWT 30 min, storage confinado)
+# Entorno de pruebas (SPEC-04 §2: JWT 15 min, storage confinado)
 # =====================================================================
 @pytest.fixture(scope="session")
 def storage_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
@@ -94,12 +99,15 @@ def _security_env(monkeypatch: pytest.MonkeyPatch, storage_dir: Path) -> Iterato
     """Aísla la configuración de seguridad de cada test."""
     monkeypatch.setenv("JWT_SECRET_KEY", "test-only-secret-" + "a" * 48)
     monkeypatch.setenv("JWT_ALGORITHM", "HS256")
-    monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+    monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15")
     monkeypatch.setenv("REFRESH_TOKEN_EXPIRE_DAYS", "7")
     monkeypatch.setenv("ENVIRONMENT", "test")
     monkeypatch.setenv("STORAGE_RAW_DIR", str(storage_dir))
     monkeypatch.delenv("OSINT_USERS_JSON", raising=False)
     monkeypatch.delenv("OSINT_ADMIN_PASSWORD_HASH", raising=False)
+    # 2FA de ADMIN con su valor normativo (no se relaja en los tests).
+    monkeypatch.delenv("ADMIN_TOTP_REQUIRED", raising=False)
+    monkeypatch.delenv("TRUST_PROXY_HEADERS", raising=False)
     # Sin API Keys por defecto (SPEC-04 §4): el almacén real queda vacío.
     monkeypatch.delenv("OSINT_API_KEYS_JSON", raising=False)
     # Registro de jobs en memoria (SPEC-02 §5): sin Redis en los tests.
@@ -107,10 +115,12 @@ def _security_env(monkeypatch: pytest.MonkeyPatch, storage_dir: Path) -> Iterato
     reset_settings_cache()
     reset_hasher_cache()
     reset_job_registry()
+    reset_login_guards()
     yield
     reset_settings_cache()
     reset_hasher_cache()
     reset_job_registry()
+    reset_login_guards()
 
 
 # =====================================================================
@@ -659,7 +669,7 @@ def client(app: Any) -> Any:
 
 @pytest.fixture
 def tokens() -> dict[Role, str]:
-    """Un access token JWT por rol humano (SPEC-04 §2: 30 min)."""
+    """Un access token JWT por rol humano (SPEC-04 §2: 15 min)."""
     return {
         Role.ADMIN: create_access_token(ADMIN_ID, Role.ADMIN.value),
         Role.ANALYST: create_access_token(ANALYST_ID, Role.ANALYST.value),
@@ -677,6 +687,14 @@ def api_key_header(key: str = API_KEY) -> dict[str, str]:
     return {"X-API-Key": key}
 
 
+def login_payload(username: str, password: str = TEST_PASSWORD) -> dict[str, str]:
+    """Cuerpo de ``/auth/login``; añade el TOTP vigente si el operador es ADMIN."""
+    payload = {"username": username, "password": password}
+    if username == "admin":
+        payload["totp_code"] = totp_now(ADMIN_TOTP_SECRET)
+    return payload
+
+
 @pytest.fixture
 def hashed_users() -> InMemoryUserStore:
     """Directorio con hashes Argon2id reales (tests de ``/auth``)."""
@@ -692,6 +710,7 @@ def hashed_users() -> InMemoryUserStore:
                 username="admin",
                 password_hash=password_hash,
                 role=Role.ADMIN,
+                totp_secret=ADMIN_TOTP_SECRET,
             ),
             UserRecord(
                 id=ANALYST_ID,

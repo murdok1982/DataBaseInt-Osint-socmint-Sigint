@@ -1,8 +1,8 @@
-"""JWT: expiración de 30 minutos y refresh cookie ``HttpOnly``/``Secure``.
+"""JWT: expiración de 15 minutos y refresh cookie ``HttpOnly``/``Secure``.
 
-Autorizado por: **SPEC-04 §2** (tokens de acceso JWT con expiración de 30 min +
-refresh token en cookie ``HttpOnly`` y ``Secure``) y **SPEC-04 §4** (criterio de
-aceptación "JWT de 30 min verificado; refresh solo por cookie").
+Autorizado por: **SPEC-04 §2 v2.2** (tokens de acceso JWT con expiración de
+15 min + refresh token en cookie ``HttpOnly`` y ``Secure``; topes 15 min / 7 días)
+y **SPEC-04 §4** (criterio "JWT de 15 min verificado; refresh solo por cookie").
 
 Se comprueba el token (unidad) y los endpoints ``/auth/login``,
 ``/auth/refresh``, ``/auth/logout`` y ``/auth/me`` (integración con
@@ -31,26 +31,62 @@ from app.core.security import (
     decode_refresh_token,
     decode_token,
 )
-from tests.security.conftest import ADMIN_ID, ANALYST_ID, TEST_PASSWORD, auth_header
+from tests.security.conftest import (
+    ADMIN_ID,
+    ANALYST_ID,
+    TEST_PASSWORD,
+    auth_header,
+    login_payload,
+)
 
 
 # =====================================================================
 # Unidad: emisión y verificación del token
 # =====================================================================
-def test_settings_pin_30_minutes() -> None:
-    """SPEC-04 §2: el access token dura exactamente 30 minutos."""
+def test_settings_pin_15_minutes() -> None:
+    """SPEC-04 §2 v2.2: el access token dura exactamente 15 minutos."""
     settings = get_settings()
-    assert settings.access_token_expire_minutes == 30
-    assert settings.access_token_expire_seconds == 1800
-    assert access_token_expires_in() == 1800
+    assert settings.access_token_expire_minutes == 15
+    assert settings.access_token_expire_seconds == 900
+    assert access_token_expires_in() == 900
     assert settings.jwt_algorithm == "HS256"
 
 
-def test_access_token_expires_in_30_minutes() -> None:
-    """El claim ``exp`` está 1800 s por delante de ``iat``."""
+def test_default_access_token_lifetime_is_15_minutes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sin variable de entorno, el valor por defecto ya es el normativo."""
+    monkeypatch.delenv("ACCESS_TOKEN_EXPIRE_MINUTES", raising=False)
+    reset_settings_cache()
+    assert get_settings().access_token_expire_minutes == 15
+
+
+@pytest.mark.parametrize(
+    ("variable", "value"),
+    [
+        ("ACCESS_TOKEN_EXPIRE_MINUTES", "30"),
+        ("ACCESS_TOKEN_EXPIRE_MINUTES", "0"),
+        ("REFRESH_TOKEN_EXPIRE_DAYS", "8"),
+    ],
+    ids=["access-30min", "access-0", "refresh-8d"],
+)
+def test_settings_reject_lifetimes_above_policy(
+    monkeypatch: pytest.MonkeyPatch, variable: str, value: str
+) -> None:
+    """Expiraciones fuera de los topes (15 min / 7 días) abortan el arranque."""
+    monkeypatch.setenv(variable, value)
+    reset_settings_cache()
+    with pytest.raises(ValueError):
+        get_settings()
+    monkeypatch.undo()
+    reset_settings_cache()
+
+
+def test_access_token_expires_in_15_minutes() -> None:
+    """El claim ``exp`` está 900 s por delante de ``iat``."""
     token = create_access_token(ANALYST_ID, Role.ANALYST.value)
     payload = decode_access_token(token)
-    assert payload["exp"] - payload["iat"] == 1800
+    assert payload["exp"] - payload["iat"] == 900
 
 
 def test_access_token_claims() -> None:
@@ -126,16 +162,13 @@ def hashed_client(app: Any, hashed_users: Any) -> Any:
     return TestClient(app)
 
 
-def test_login_returns_1800_and_sets_httponly_secure_cookie(hashed_client: Any) -> None:
-    """``/auth/login`` devuelve ``expires_in=1800`` y cookie ``HttpOnly``/``Secure``."""
-    response = hashed_client.post(
-        "/api/v1/auth/login",
-        json={"username": "admin", "password": TEST_PASSWORD},
-    )
+def test_login_returns_900_and_sets_httponly_secure_cookie(hashed_client: Any) -> None:
+    """``/auth/login`` devuelve ``expires_in=900`` y cookie ``HttpOnly``/``Secure``."""
+    response = hashed_client.post("/api/v1/auth/login", json=login_payload("admin"))
     assert response.status_code == 200
     body = response.json()
     assert body["token_type"] == "bearer"
-    assert body["expires_in"] == 1800
+    assert body["expires_in"] == 900
     assert decode_access_token(body["access_token"])["sub"] == ADMIN_ID
 
     set_cookie = response.headers["set-cookie"]
@@ -158,15 +191,12 @@ def test_login_with_wrong_password_returns_401(hashed_client: Any) -> None:
 
 def test_refresh_uses_cookie_and_returns_new_access_token(hashed_client: Any) -> None:
     """``/auth/refresh`` renueva el access token a partir de la cookie."""
-    login = hashed_client.post(
-        "/api/v1/auth/login",
-        json={"username": "admin", "password": TEST_PASSWORD},
-    )
+    login = hashed_client.post("/api/v1/auth/login", json=login_payload("admin"))
     hashed_client.cookies.set(REFRESH_COOKIE_NAME, login.cookies[REFRESH_COOKIE_NAME])
 
     response = hashed_client.post("/api/v1/auth/refresh")
     assert response.status_code == 200
-    assert response.json()["expires_in"] == 1800
+    assert response.json()["expires_in"] == 900
     assert decode_access_token(response.json()["access_token"])["sub"] == ADMIN_ID
     hashed_client.cookies.clear()
 

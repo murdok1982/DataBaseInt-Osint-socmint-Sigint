@@ -1,6 +1,8 @@
 """Rutas de ``/auth`` (tag ``auth`` del contrato).
 
-Autorizado por: **SPEC-03 §2** y **SPEC-04 §2**.
+Autorizado por: **SPEC-03 §2**, **SPEC-04 §2/§2.1** (v2.2: JWT 15 min, 2FA TOTP
+obligatorio para ADMIN con anti-repetición, bloqueo por fuerza bruta → 429) y
+**SPEC-06 §1.4** (evento de auditoría ``auth``).
 
 | operationId   | Método | Ruta              | Rol mínimo  |
 | :------------ | :----- | :---------------- | :---------- |
@@ -15,13 +17,16 @@ El refresh token viaja **solo** en cookie ``HttpOnly`` + ``Secure``
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
 from app.api.deps import bearer_scheme, get_current_user, get_user_store
+from app.core.audit import audit_auth_event, client_ip
 from app.core.config import get_settings
+from app.core.errors import detail_from_code
+from app.core.login_guard import get_login_throttle, get_totp_replay_guard
 from app.core.rbac import Role, unauthorized
 from app.core.security import (
     REFRESH_COOKIE_NAME,
@@ -31,8 +36,14 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_refresh_token,
+    match_totp_counter,
 )
-from app.core.users import Principal, UserStore, authenticate
+from app.core.users import Principal, UserRecord, UserStore, authenticate
+
+#: Mensaje único para cualquier fallo de credenciales o 2FA (SPEC-04 §2: no
+#: revela qué factor falló).
+INVALID_CREDENTIALS = "Credenciales o código 2FA incorrectos."
+CODE_TOO_MANY_REQUESTS = "TOO_MANY_REQUESTS"
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -45,10 +56,11 @@ class LoginRequest(BaseModel):
 
     username: str = Field(min_length=1, max_length=255)
     password: str = Field(min_length=1, max_length=1024)
+    totp_code: Optional[str] = Field(default=None, pattern=r"^[0-9]{6}$")
 
 
 class TokenResponse(BaseModel):
-    """``TokenResponse`` del contrato (``expires_in`` = 1800 s)."""
+    """``TokenResponse`` del contrato (``expires_in`` ≤ 900 s)."""
 
     access_token: str
     token_type: Literal["bearer"] = "bearer"
@@ -93,20 +105,63 @@ def _token_response(principal: Principal) -> TokenResponse:
     operation_id="authLogin",
     response_model=TokenResponse,
     summary="Login del operador",
-    responses={401: {"description": "Credenciales inválidas"}},
+    responses={
+        401: {"description": "Credenciales o 2FA inválidos"},
+        429: {"description": "Demasiados intentos fallidos (SPEC-04 §2.1)"},
+    },
 )
 async def auth_login(
     payload: LoginRequest,
+    request: Request,
     response: Response,
     store: UserStore = Depends(get_user_store),
 ) -> TokenResponse:
-    """Autentica al operador y emite access JWT + refresh cookie."""
+    """Autentica al operador y emite access JWT + refresh cookie.
+
+    Orden (SPEC-04 §2.1): el bloqueo se evalúa **antes** de verificar la
+    contraseña, de modo que un atacante bloqueado no obtiene señal alguna.
+    """
+    throttle = get_login_throttle()
+    key = throttle.key(client_ip(request), payload.username)
+    retry_after = throttle.retry_after(key)
+    if retry_after is not None:
+        audit_auth_event(request, "LOCKED", username=payload.username)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=detail_from_code(
+                CODE_TOO_MANY_REQUESTS,
+                "Demasiados intentos fallidos. Vuelve a intentarlo más tarde.",
+            ),
+            headers={"Retry-After": str(retry_after)},
+        )
+
     record = authenticate(payload.username, payload.password, store)
-    if record is None:
-        raise unauthorized("Usuario o contraseña incorrectos.")
+    if record is None or not _second_factor_ok(record, payload.totp_code):
+        throttle.register_failure(key)
+        audit_auth_event(request, "FAILURE", username=payload.username)
+        raise unauthorized(INVALID_CREDENTIALS)
+
+    throttle.reset(key)
     principal = record.to_principal()
+    audit_auth_event(request, "SUCCESS", principal=principal)
     _set_refresh_cookie(response, create_refresh_token(principal.id, principal.role.value))
     return _token_response(principal)
+
+
+def _second_factor_ok(record: UserRecord, totp_code: Optional[str]) -> bool:
+    """2FA TOTP (SPEC-04 §2 v2.2).
+
+    - Operador con ``totp_secret`` ⇒ código válido y no reutilizado.
+    - ``ADMIN`` sin ``totp_secret`` ⇒ rechazado salvo ``ADMIN_TOTP_REQUIRED=false``
+      (solo desarrollo; la configuración lo prohíbe en producción).
+    - Resto de roles sin secreto ⇒ basta la contraseña.
+    """
+    if not record.totp_enabled:
+        return not (record.role is Role.ADMIN and get_settings().admin_totp_required)
+    counter = match_totp_counter(str(record.totp_secret), totp_code or "")
+    if counter is None:
+        return False
+    return get_totp_replay_guard().accept(record.id, counter)
 
 
 # =====================================================================

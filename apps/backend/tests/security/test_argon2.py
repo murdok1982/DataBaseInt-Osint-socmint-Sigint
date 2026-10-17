@@ -87,14 +87,11 @@ def test_login_endpoint_never_returns_the_hash(app: Any, hashed_users: Any) -> N
     from fastapi.testclient import TestClient
 
     from app.api.deps import get_user_store
-    from tests.security.conftest import TEST_PASSWORD
+    from tests.security.conftest import login_payload
 
     app.dependency_overrides[get_user_store] = lambda: hashed_users
     client = TestClient(app)
-    response = client.post(
-        "/api/v1/auth/login",
-        json={"username": "admin", "password": TEST_PASSWORD},
-    )
+    response = client.post("/api/v1/auth/login", json=login_payload("admin"))
     assert response.status_code == 200
     assert "$argon2id$" not in response.text
 

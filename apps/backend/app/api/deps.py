@@ -21,9 +21,10 @@ import os
 from functools import lru_cache
 from typing import Any, Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
+from app.core.audit import remember_principal
 from app.core.apikeys import (
     ApiKeyStore,
     EnvApiKeyStore,
@@ -110,6 +111,7 @@ def principal_from_token(token: str, store: UserStore) -> Principal:
 
 
 async def get_current_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     store: UserStore = Depends(get_user_store),
 ) -> Principal:
@@ -118,7 +120,9 @@ async def get_current_user(
         raise unauthorized("Falta el encabezado Authorization: Bearer <token>.")
     if (credentials.scheme or "").lower() != "bearer":
         raise unauthorized("Esquema de autenticación no soportado; usa Bearer.")
-    return principal_from_token(credentials.credentials, store)
+    principal = principal_from_token(credentials.credentials, store)
+    remember_principal(request, principal)
+    return principal
 
 
 def principal_from_api_key(raw_key: str, store: ApiKeyStore) -> Principal:
@@ -135,7 +139,24 @@ def principal_from_api_key(raw_key: str, store: ApiKeyStore) -> Principal:
     )
 
 
+def _resolve_principal(
+    credentials: Optional[HTTPAuthorizationCredentials],
+    api_key: Optional[str],
+    store: UserStore,
+    api_keys: ApiKeyStore,
+) -> Optional[Principal]:
+    """API Key (M2M) primero, después JWT; ``None`` si no hay credenciales."""
+    if api_key:
+        return principal_from_api_key(api_key, api_keys)
+    if credentials is not None and credentials.credentials:
+        if (credentials.scheme or "").lower() != "bearer":
+            raise unauthorized("Esquema de autenticación no soportado; usa Bearer.")
+        return principal_from_token(credentials.credentials, store)
+    return None
+
+
 async def get_current_principal(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     api_key: Optional[str] = Depends(api_key_scheme),
     store: UserStore = Depends(get_user_store),
@@ -147,18 +168,17 @@ async def get_current_principal(
     ⇒ **401**. Un principal M2M resuelto aquí obtiene 403 en toda ruta que exija
     un rol humano (SPEC-04 §1/§4).
     """
-    if api_key:
-        return principal_from_api_key(api_key, api_keys)
-    if credentials is not None and credentials.credentials:
-        if (credentials.scheme or "").lower() != "bearer":
-            raise unauthorized("Esquema de autenticación no soportado; usa Bearer.")
-        return principal_from_token(credentials.credentials, store)
-    raise unauthorized(
-        "Falta autenticación: 'Authorization: Bearer <token>' o 'X-API-Key'."
-    )
+    principal = _resolve_principal(credentials, api_key, store, api_keys)
+    if principal is None:
+        raise unauthorized(
+            "Falta autenticación: 'Authorization: Bearer <token>' o 'X-API-Key'."
+        )
+    remember_principal(request, principal)
+    return principal
 
 
 async def get_optional_principal(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     api_key: Optional[str] = Depends(api_key_scheme),
     store: UserStore = Depends(get_user_store),
@@ -169,13 +189,10 @@ async def get_optional_principal(
     Usado por operaciones públicas (``security: []``) que aun así quieren conocer
     la identidad si está presente. Una credencial **inválida** sigue dando 401.
     """
-    if api_key:
-        return principal_from_api_key(api_key, api_keys)
-    if credentials is not None and credentials.credentials:
-        if (credentials.scheme or "").lower() != "bearer":
-            raise unauthorized("Esquema de autenticación no soportado; usa Bearer.")
-        return principal_from_token(credentials.credentials, store)
-    return None
+    principal = _resolve_principal(credentials, api_key, store, api_keys)
+    if principal is not None:
+        remember_principal(request, principal)
+    return principal
 
 
 async def authorize_websocket(

@@ -2,7 +2,7 @@
 
 Autorizado por: **SPEC-04 §2**
 - Contraseñas hasheadas **exclusivamente con Argon2id**.
-- Access token JWT con expiración de **30 minutos**.
+- Access token JWT con expiración de **15 minutos** (v2.2).
 - Refresh token de 7 días, entregado solo en cookie ``HttpOnly``/``Secure``.
 
 Los imports de ``argon2-cffi`` y del backend JWT (``PyJWT`` o ``python-jose``)
@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import secrets
 import struct
 import time
 import uuid
@@ -214,7 +215,7 @@ def _create_token(
 
 
 def access_token_expires_in() -> int:
-    """Segundos de vida del access token (``expires_in`` del contrato = 1800)."""
+    """Segundos de vida del access token (``expires_in`` del contrato ≤ 900)."""
     return int(get_settings().access_token_expire_seconds)
 
 
@@ -224,7 +225,7 @@ def create_access_token(
     expires_delta: Optional[timedelta] = None,
     extra_claims: Optional[dict[str, Any]] = None,
 ) -> str:
-    """Access token JWT de **30 minutos** (SPEC-04 §2).
+    """Access token JWT de **15 minutos** (SPEC-04 §2 v2.2).
 
     :param expires_delta: override *solo* para tests (p. ej. forzar expiración).
     """
@@ -304,8 +305,8 @@ TOTP_DEFAULT_WINDOW = 1
 
 
 def generate_totp_secret(nbytes: int = 20) -> str:
-    """Genera un secreto TOTP en base32 (formato de apps autenticadoras)."""
-    return base64.b32encode(uuid.uuid4().bytes + uuid.uuid4().bytes)[:32].decode("ascii")
+    """Genera un secreto TOTP en base32 (160 bits CSPRNG por defecto, RFC 4226 §4)."""
+    return base64.b32encode(secrets.token_bytes(nbytes)).decode("ascii").rstrip("=")
 
 
 def _totp_code(
@@ -351,19 +352,41 @@ def verify_totp(
 
     Devuelve ``False`` (sin filtrar el motivo) ante un secreto o código inválido.
     """
+    return (
+        match_totp_counter(
+            secret, code, at=at, window=window, period=period, digits=digits
+        )
+        is not None
+    )
+
+
+def match_totp_counter(
+    secret: str,
+    code: str,
+    *,
+    at: Optional[float] = None,
+    window: int = TOTP_DEFAULT_WINDOW,
+    period: int = TOTP_PERIOD_SECONDS,
+    digits: int = TOTP_DIGITS,
+) -> Optional[int]:
+    """Contador TOTP que valida ``code``, o ``None``.
+
+    Devolver el contador permite al llamador rechazar la **reutilización** de
+    un código ya aceptado (SPEC-04 §2 v2.2, anti-repetición).
+    """
     candidate = str(code or "").strip()
     if not candidate or not candidate.isdigit() or len(candidate) != digits:
-        return False
+        return None
     timestamp = time.time() if at is None else float(at)
     counter = int(timestamp) // period
     for offset in range(-window, window + 1):
         try:
             expected = _totp_code(secret, counter + offset, digits=digits)
         except ValueError:
-            return False
+            return None
         if hmac.compare_digest(expected, candidate):
-            return True
-    return False
+            return counter + offset
+    return None
 
 
 def reset_hasher_cache() -> None:
@@ -397,4 +420,5 @@ __all__ = [
     "generate_totp_secret",
     "totp_now",
     "verify_totp",
+    "match_totp_counter",
 ]

@@ -12,8 +12,11 @@ Decisiones
 - ``JWT_SECRET_KEY`` **no tiene valor por defecto usable**: en producción su
   ausencia es un error fatal; en desarrollo se genera una clave efímera y se
   avisa por ``RuntimeWarning`` (nunca un secreto hardcodeado versionado).
-- Los valores por defecto de expiración son los de SPEC-04: **30 minutos** de
-  access token y 7 días de refresh.
+- Los valores por defecto de expiración son los de SPEC-04 §2 v2.2: **15 minutos**
+  de access token y 7 días de refresh. Valores superiores se rechazan al
+  arrancar (:func:`_validate_security`).
+- ``ADMIN_TOTP_REQUIRED`` (2FA obligatorio para ADMIN) solo puede desactivarse
+  fuera de producción.
 """
 
 from __future__ import annotations
@@ -27,8 +30,14 @@ from typing import Any, Callable
 
 # --- Constantes normativas (SPEC-04 §2) -------------------------------
 DEFAULT_JWT_ALGORITHM = "HS256"
-DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
+DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 15
 DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS = 7
+#: Topes normativos (SPEC-04 §2 v2.2): no se admiten expiraciones mayores.
+MAX_ACCESS_TOKEN_EXPIRE_MINUTES = 15
+MAX_REFRESH_TOKEN_EXPIRE_DAYS = 7
+#: Protección contra fuerza bruta (SPEC-04 §2.1).
+DEFAULT_LOGIN_MAX_FAILURES = 5
+DEFAULT_LOGIN_WINDOW_SECONDS = 900
 DEFAULT_EXTRACTION_CONFIDENCE_THRESHOLD = 0.50
 DEFAULT_NEO4J_URI = "bolt://localhost:7687"
 DEFAULT_NEO4J_USER = "neo4j"
@@ -76,6 +85,33 @@ def _as_bool(raw: str) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _validate_security(settings: Any) -> None:
+    """Rechaza configuraciones que violan SPEC-04 §2/§2.1 v2.2.
+
+    :raises ValueError: expiraciones por encima del tope, límites de login no
+        positivos o 2FA de ADMIN desactivado en producción.
+    """
+    if not 0 < int(settings.access_token_expire_minutes) <= MAX_ACCESS_TOKEN_EXPIRE_MINUTES:
+        raise ValueError(
+            "ACCESS_TOKEN_EXPIRE_MINUTES debe estar entre 1 y "
+            f"{MAX_ACCESS_TOKEN_EXPIRE_MINUTES} (SPEC-04 §2)."
+        )
+    if not 0 < int(settings.refresh_token_expire_days) <= MAX_REFRESH_TOKEN_EXPIRE_DAYS:
+        raise ValueError(
+            "REFRESH_TOKEN_EXPIRE_DAYS debe estar entre 1 y "
+            f"{MAX_REFRESH_TOKEN_EXPIRE_DAYS} (SPEC-04 §2)."
+        )
+    if int(settings.login_max_failures) < 1 or int(settings.login_window_seconds) < 1:
+        raise ValueError("LOGIN_MAX_FAILURES y LOGIN_WINDOW_SECONDS deben ser > 0.")
+    if (
+        not settings.admin_totp_required
+        and settings.environment.strip().lower() in PRODUCTION_ENVIRONMENTS
+    ):
+        raise ValueError(
+            "ADMIN_TOTP_REQUIRED=false no está permitido en producción (SPEC-04 §2)."
+        )
+
+
 if PYDANTIC_SETTINGS_AVAILABLE:
 
     class Settings(BaseSettings):  # type: ignore[valid-type, misc]
@@ -99,6 +135,13 @@ if PYDANTIC_SETTINGS_AVAILABLE:
         #: Cookie de refresh solo se sirve por HTTPS (SPEC-04 §2). Se permite
         #: desactivar en tests locales; en producción Nginx fuerza TLS 1.2+.
         cookie_secure: bool = True
+
+        # --- 2FA y fuerza bruta (SPEC-04 §2/§2.1) ---
+        admin_totp_required: bool = True
+        login_max_failures: int = DEFAULT_LOGIN_MAX_FAILURES
+        login_window_seconds: int = DEFAULT_LOGIN_WINDOW_SECONDS
+        #: Confiar en ``X-Real-IP`` (solo detrás de Nginx, SPEC-04 §2.1).
+        trust_proxy_headers: bool = False
 
         # --- Argon2id (SPEC-04 §2) ---
         argon2_time_cost: int = 3
@@ -132,11 +175,12 @@ if PYDANTIC_SETTINGS_AVAILABLE:
             self.extraction_confidence_threshold = float(
                 self.extraction_confidence_threshold
             )
+            _validate_security(self)
 
         # --- Derivados (segundos, para ``expires_in`` del contrato) ---
         @property
         def access_token_expire_seconds(self) -> int:
-            """1800 s = 30 min (SPEC-04 §2, campo ``expires_in``)."""
+            """900 s = 15 min (SPEC-04 §2 v2.2, campo ``expires_in``)."""
             return int(self.access_token_expire_minutes) * 60
 
         @property
@@ -159,6 +203,10 @@ else:  # pragma: no cover - solo si falta pydantic-settings
         access_token_expire_minutes: int = DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES
         refresh_token_expire_days: int = DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS
         cookie_secure: bool = True
+        admin_totp_required: bool = True
+        login_max_failures: int = DEFAULT_LOGIN_MAX_FAILURES
+        login_window_seconds: int = DEFAULT_LOGIN_WINDOW_SECONDS
+        trust_proxy_headers: bool = False
         argon2_time_cost: int = 3
         argon2_memory_cost: int = 65536
         neo4j_uri: str = DEFAULT_NEO4J_URI
@@ -183,6 +231,10 @@ else:  # pragma: no cover - solo si falta pydantic-settings
                 ),
                 ("refresh_token_expire_days", "REFRESH_TOKEN_EXPIRE_DAYS", int),
                 ("cookie_secure", "COOKIE_SECURE", _as_bool),
+                ("admin_totp_required", "ADMIN_TOTP_REQUIRED", _as_bool),
+                ("login_max_failures", "LOGIN_MAX_FAILURES", int),
+                ("login_window_seconds", "LOGIN_WINDOW_SECONDS", int),
+                ("trust_proxy_headers", "TRUST_PROXY_HEADERS", _as_bool),
                 ("argon2_time_cost", "ARGON2_TIME_COST", int),
                 ("argon2_memory_cost", "ARGON2_MEMORY_COST", int),
                 ("neo4j_uri", "NEO4J_URI", str),
@@ -209,6 +261,7 @@ else:  # pragma: no cover - solo si falta pydantic-settings
                 self.jwt_secret_key, self.environment
             )
             self.jwt_algorithm = (self.jwt_algorithm or DEFAULT_JWT_ALGORITHM).upper()
+            _validate_security(self)
 
         @property
         def access_token_expire_seconds(self) -> int:
@@ -244,4 +297,8 @@ __all__ = [
     "DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES",
     "DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS",
     "DEFAULT_EXTRACTION_CONFIDENCE_THRESHOLD",
+    "DEFAULT_LOGIN_MAX_FAILURES",
+    "DEFAULT_LOGIN_WINDOW_SECONDS",
+    "MAX_ACCESS_TOKEN_EXPIRE_MINUTES",
+    "MAX_REFRESH_TOKEN_EXPIRE_DAYS",
 ]

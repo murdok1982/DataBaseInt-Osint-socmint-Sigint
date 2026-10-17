@@ -324,7 +324,7 @@ def _e2e_env(monkeypatch: pytest.MonkeyPatch, storage_dir: Path) -> Iterator[Non
     """Aísla la configuración de seguridad de cada test (sin Neo4j/Redis)."""
     monkeypatch.setenv("JWT_SECRET_KEY", "test-only-secret-" + "a" * 48)
     monkeypatch.setenv("JWT_ALGORITHM", "HS256")
-    monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+    monkeypatch.setenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15")
     monkeypatch.setenv("REFRESH_TOKEN_EXPIRE_DAYS", "7")
     monkeypatch.setenv("ENVIRONMENT", "test")
     monkeypatch.setenv("STORAGE_RAW_DIR", str(storage_dir))
@@ -438,7 +438,7 @@ def client(app: Any) -> Any:
 
 @pytest.fixture
 def tokens() -> dict[Role, str]:
-    """Un access token JWT por rol humano (SPEC-04 §2: 30 min)."""
+    """Un access token JWT por rol humano (SPEC-04 §2: 15 min)."""
     return {
         Role.ADMIN: create_access_token(ADMIN_ID, Role.ADMIN.value),
         Role.ANALYST: create_access_token(ANALYST_ID, Role.ANALYST.value),

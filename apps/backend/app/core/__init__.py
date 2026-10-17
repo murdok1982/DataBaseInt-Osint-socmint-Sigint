@@ -1,7 +1,8 @@
 """Zona Agente 3 — núcleo transversal del backend (config, seguridad, RBAC).
 
 Autorizado por:
-- **SPEC-04 §2** (Argon2id, JWT 30 min + refresh cookie HttpOnly/Secure).
+- **SPEC-04 §2** (Argon2id, JWT 15 min + refresh cookie HttpOnly/Secure, 2FA).
+- **SPEC-06 §1** (bitácora de auditoría, ``app.core.audit``).
 - **SPEC-04 §1** (matriz de roles RBAC).
 - **SPEC-03 §1** (convenciones de la API: ``Bearer`` JWT, envoltura de errores).
 

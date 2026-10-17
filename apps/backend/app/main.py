@@ -2,8 +2,8 @@
 
 Autorizado por: **SPEC-03 §1** (base ``/api/v1``, ``Bearer`` JWT / ``X-API-Key``,
 envoltura de errores), **SPEC-03 §5-§6** (409 ``CONFLICT`` para ingesta ciega y
-nodo bloqueado), **SPEC-04** (RBAC/seguridad) y ``contracts/openapi.yaml``
-SELLADO v2.0.0.
+nodo bloqueado), **SPEC-04** (RBAC/seguridad), **SPEC-06 §1** (bitácora de
+auditoría) y ``contracts/openapi.yaml`` SELLADO v2.2.0.
 
 Responsabilidades
 -----------------
@@ -32,6 +32,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.deps import close_graph_driver
 from app.api.router import api_router
+from app.core.audit import AuditMiddleware
 from app.core.errors import (
     CODE_CONFLICT,
     CODE_SERVICE_UNAVAILABLE,
@@ -43,10 +44,10 @@ from app.core.errors import (
 from app.services.preflight import PreflightRequiredError
 
 API_TITLE = "OSINT Nexus API"
-API_VERSION = "2.0.0"
+API_VERSION = "2.2.0"
 API_DESCRIPTION = (
     "API de inteligencia OSINT (grafo de conocimiento + GraphRAG). "
-    "Contrato SELLADO v2.0.0 derivado de SPEC-03 y SPEC-04."
+    "Contrato SELLADO v2.2.0 derivado de SPEC-03, SPEC-04 y SPEC-06."
 )
 API_PREFIX = "/api/v1"
 
@@ -93,6 +94,9 @@ def create_app() -> FastAPI:
     # Incluye ``GET /api/v1/info`` (operationId ``getInfo``, público) vía
     # ``app.api.v1.system``; no hay rutas de salud fuera de ``/api/v1``.
     application.include_router(api_router, prefix=API_PREFIX)
+
+    # --- Bitácora de auditoría + X-Request-ID (SPEC-06 §1) ----------
+    application.add_middleware(AuditMiddleware, prefix=API_PREFIX)
 
     # --- Errores con el sobre del contrato -------------------------
     @application.exception_handler(StarletteHTTPException)

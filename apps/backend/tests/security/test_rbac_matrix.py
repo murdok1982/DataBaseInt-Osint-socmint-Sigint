@@ -44,6 +44,7 @@ from tests.security.conftest import (
     ANALYSIS_ID,
     api_key_header,
     auth_header,
+    login_payload,
 )
 
 HUMAN_ROLES = (Role.ADMIN, Role.ANALYST, Role.VIEWER)
@@ -233,10 +234,7 @@ def test_login_allowed_for_human_roles(
 ) -> None:
     """Los tres roles humanos pueden iniciar sesión (``LOGIN`` = "Sí")."""
     assert SPEC_04_MATRIX[Permission.LOGIN][role] is True
-    response = login_client.post(
-        "/api/v1/auth/login",
-        json={"username": username, "password": TEST_PASSWORD},
-    )
+    response = login_client.post("/api/v1/auth/login", json=login_payload(username))
     assert response.status_code == 200
 
 
