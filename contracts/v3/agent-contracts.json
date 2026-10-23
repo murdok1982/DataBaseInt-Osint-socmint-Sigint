@@ -1,0 +1,569 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osint-nexus.local/contracts/v3/agent-contracts.json",
+  "title": "OSINT Nexus v3 — Agent Contracts",
+  "description": "Bundle JSON Schema 2020-12 para los contratos inter-agente de la plataforma OSINT Nexus v3. Todos los schemas de mensaje usan additionalProperties=false; los mapas libres (properties/metadata) se documentan explícitamente. La fuente normativa es SPEC.md §8 y DB_CONTRACT.sql.",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/$defs/AgentEnvelope" },
+    { "$ref": "#/$defs/RawEvidence" },
+    { "$ref": "#/$defs/FusionProposal" },
+    { "$ref": "#/$defs/AdmiraltyAssessment" },
+    { "$ref": "#/$defs/PIR" },
+    { "$ref": "#/$defs/EEI" },
+    { "$ref": "#/$defs/TaskingOrder" },
+    { "$ref": "#/$defs/OpsecEvent" },
+    { "$ref": "#/$defs/DisseminationPackage" },
+    { "$ref": "#/$defs/StixBundle" }
+  ],
+  "$defs": {
+    "Uuid7": {
+      "type": "string",
+      "description": "UUIDv7 en minúsculas (timestamp ordenable + aleatoriedad).",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "Sha256": {
+      "type": "string",
+      "description": "SHA-256 en hexadecimal minúsculo de 64 caracteres.",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "Tlp": {
+      "type": "string",
+      "description": "Traffic Light Protocol. La difusión nunca puede ser menos restrictiva que el informe.",
+      "enum": ["TLP:CLEAR", "TLP:GREEN", "TLP:AMBER", "TLP:AMBER+STRICT", "TLP:RED"]
+    },
+    "Admiralty": {
+      "type": "string",
+      "description": "Escala Almirantazgo: fiabilidad de fuente A-F + credibilidad de información 1-6.",
+      "pattern": "^[A-F][1-6]$"
+    },
+    "Agent": {
+      "type": "string",
+      "enum": ["DIRECTOR_CELL", "HERMES", "ARACNE", "ARGOS", "ATENEA"]
+    },
+    "CollectorAgent": {
+      "type": "string",
+      "description": "Valores de staging.collector_agent_enum para colectores operativos. MIGRATION_LEGACY existe en la DB pero no puede usar append_evidence.",
+      "enum": ["HERMES_HUMINT", "ARACNE_SOCMINT", "ARGOS_OSINT"]
+    },
+    "Timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "StixType": {
+      "type": "string",
+      "description": "Tipos STIX 2.1 y extensiones x-osint-* aprobadas por SPEC.md §5.4.",
+      "enum": [
+        "identity",
+        "user-account",
+        "threat-actor",
+        "infrastructure",
+        "location",
+        "x-osint-event",
+        "report",
+        "observed-data",
+        "note",
+        "opinion",
+        "relationship",
+        "domain-name",
+        "ipv4-addr",
+        "ipv6-addr",
+        "email-addr",
+        "url",
+        "x-osint-phone",
+        "x-osint-wallet",
+        "marking-definition"
+      ]
+    },
+    "RelationshipType": {
+      "type": "string",
+      "description": "Tipos de relación del contrato; intel.relationship_types es la fuente de verdad.",
+      "enum": [
+        "CONTROLS_ACCOUNT",
+        "COMMUNICATES_WITH",
+        "FINANCED_BY",
+        "LOCATED_AT",
+        "ALIAS_OF",
+        "AFFILIATED_WITH",
+        "MEMBER_OF",
+        "OWNS",
+        "USES",
+        "TARGETS",
+        "PARTICIPATED_IN",
+        "OBSERVED_AT",
+        "MENTIONS",
+        "RELATED_TO"
+      ]
+    },
+    "Attachment": {
+      "type": "object",
+      "description": "Adjunto probatorio; el SHA-256 se calcula sobre los bytes del archivo.",
+      "additionalProperties": false,
+      "required": ["filename", "mime_type", "size_bytes", "sha256", "storage_uri"],
+      "properties": {
+        "filename": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "mime_type": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/Sha256" },
+        "storage_uri": { "type": "string", "format": "uri", "minLength": 1 },
+        "metadata": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "RawEvidence": {
+      "type": "object",
+      "description": "Evidencia cruda enviada por un colector. El servidor recalcula el SHA-256 sobre raw_payload_bytes antes de persistir.",
+      "additionalProperties": false,
+      "required": [
+        "mission_pir_id",
+        "collector_agent",
+        "source_platform",
+        "source_uri",
+        "captured_at_utc",
+        "collection_method",
+        "legal_basis",
+        "raw_payload",
+        "raw_payload_sha256",
+        "attachments"
+      ],
+      "properties": {
+        "mission_pir_id": { "$ref": "#/$defs/Uuid7" },
+        "collector_agent": { "$ref": "#/$defs/CollectorAgent" },
+        "source_platform": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "source_uri": { "type": "string", "format": "uri", "minLength": 1 },
+        "captured_at_utc": { "$ref": "#/$defs/Timestamp" },
+        "collection_method": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "legal_basis": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "raw_payload": { "type": "object", "additionalProperties": true },
+        "raw_payload_sha256": { "$ref": "#/$defs/Sha256" },
+        "attachments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Attachment" },
+          "default": []
+        },
+        "confidence_hint": { "type": "number", "minimum": 0, "maximum": 1 },
+        "metadata": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "AgentEnvelope": {
+      "type": "object",
+      "description": "Sobre común para todos los mensajes inter-agente (SPEC.md §8.1).",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "message_id",
+        "correlation_id",
+        "mission_id",
+        "sender",
+        "recipient",
+        "message_type",
+        "created_at",
+        "tlp",
+        "idempotency_key",
+        "payload",
+        "signature"
+      ],
+      "properties": {
+        "schema_version": { "type": "string", "pattern": "^3\\.[0-9]+\\.[0-9]+$" },
+        "message_id": { "$ref": "#/$defs/Uuid7" },
+        "correlation_id": { "$ref": "#/$defs/Uuid7" },
+        "mission_id": { "$ref": "#/$defs/Uuid7" },
+        "sender": { "$ref": "#/$defs/Agent" },
+        "recipient": { "$ref": "#/$defs/Agent" },
+        "message_type": {
+          "type": "string",
+          "enum": [
+            "RAW_EVIDENCE",
+            "FUSION_PROPOSAL",
+            "ADMIRALTY_ASSESSMENT",
+            "PIR",
+            "EEI",
+            "TASKING_ORDER",
+            "OPSEC_EVENT",
+            "DISSEMINATION_PACKAGE",
+            "COHERENCE_ALERT",
+            "ACK",
+            "HEARTBEAT",
+            "ERROR"
+          ]
+        },
+        "created_at": { "$ref": "#/$defs/Timestamp" },
+        "tlp": { "$ref": "#/$defs/Tlp" },
+        "idempotency_key": { "$ref": "#/$defs/Uuid7" },
+        "payload": { "type": "object", "additionalProperties": true },
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["alg", "key_id", "value"],
+          "properties": {
+            "alg": { "type": "string", "const": "HMAC-SHA256" },
+            "key_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "value": { "type": "string", "minLength": 1 }
+          }
+        }
+      },
+      "allOf": [
+        { "if": { "properties": { "message_type": { "const": "RAW_EVIDENCE" } } },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/RawEvidence" } } } },
+        { "if": { "properties": { "message_type": { "const": "FUSION_PROPOSAL" } } },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/FusionProposal" } } } },
+        { "if": { "properties": { "message_type": { "const": "ADMIRALTY_ASSESSMENT" } } },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/AdmiraltyAssessment" } } } },
+        { "if": { "properties": { "message_type": { "const": "PIR" } } },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/PIR" } } } },
+        { "if": { "properties": { "message_type": { "const": "EEI" } } },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/EEI" } } } },
+        { "if": { "properties": { "message_type": { "const": "TASKING_ORDER" } } },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/TaskingOrder" } } } },
+        { "if": { "properties": { "message_type": { "const": "OPSEC_EVENT" } } },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/OpsecEvent" } } } },
+        { "if": { "properties": { "message_type": { "const": "DISSEMINATION_PACKAGE" } } },
+          "then": { "properties": { "payload": { "$ref": "#/$defs/DisseminationPackage" } } } }
+      ]
+    },
+    "FusionEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "temp_id",
+        "stix_type",
+        "name",
+        "admiralty_rating",
+        "tlp",
+        "evidence_ids"
+      ],
+      "properties": {
+        "temp_id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$" },
+        "stix_id": { "type": "string", "pattern": "^[a-z0-9-]+--[0-9a-f-]{36}$" },
+        "stix_type": { "$ref": "#/$defs/StixType" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "aliases": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "properties": { "type": "object", "additionalProperties": true },
+        "admiralty_rating": { "$ref": "#/$defs/Admiralty" },
+        "tlp": { "$ref": "#/$defs/Tlp" },
+        "valid_from": { "$ref": "#/$defs/Timestamp" },
+        "valid_until": {
+          "oneOf": [{ "$ref": "#/$defs/Timestamp" }, { "type": "null" }]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Uuid7" }
+        },
+        "confidence": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "FusionRelationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relationship_type",
+        "source_ref",
+        "target_ref",
+        "admiralty_rating",
+        "evidence_ids"
+      ],
+      "properties": {
+        "relationship_type": { "$ref": "#/$defs/RelationshipType" },
+        "source_ref": { "type": "string", "minLength": 1 },
+        "target_ref": { "type": "string", "minLength": 1 },
+        "admiralty_rating": { "$ref": "#/$defs/Admiralty" },
+        "valid_from": { "$ref": "#/$defs/Timestamp" },
+        "valid_until": {
+          "oneOf": [{ "$ref": "#/$defs/Timestamp" }, { "type": "null" }]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/Uuid7" }
+        },
+        "properties": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "Contradiction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "description", "severity"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["CONTRADICTION", "DECEPTION", "HALLUCINATION", "TEMPORAL_CONFLICT", "SOURCE_CONFLICT"]
+        },
+        "description": { "type": "string", "minLength": 1 },
+        "severity": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+        "evidence_ids": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Uuid7" }
+        },
+        "resolved": { "type": "boolean" }
+      }
+    },
+    "FusionProposal": {
+      "type": "object",
+      "description": "Propuesta de fusión de ATENEA. No escribe directamente: pasa por upsert_entity/upsert_relationship.",
+      "additionalProperties": false,
+      "required": [
+        "proposal_id",
+        "mission_id",
+        "pir_id",
+        "entities",
+        "relationships",
+        "contradictions",
+        "rationale",
+        "model_version",
+        "created_at"
+      ],
+      "properties": {
+        "proposal_id": { "$ref": "#/$defs/Uuid7" },
+        "mission_id": { "$ref": "#/$defs/Uuid7" },
+        "pir_id": { "$ref": "#/$defs/Uuid7" },
+        "entities": { "type": "array", "items": { "$ref": "#/$defs/FusionEntity" } },
+        "relationships": { "type": "array", "items": { "$ref": "#/$defs/FusionRelationship" } },
+        "contradictions": { "type": "array", "items": { "$ref": "#/$defs/Contradiction" } },
+        "rationale": { "type": "string", "minLength": 1 },
+        "model_version": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "created_at": { "$ref": "#/$defs/Timestamp" }
+      },
+      "anyOf": [
+        { "properties": { "entities": { "minItems": 1 } } },
+        { "properties": { "relationships": { "minItems": 1 } } }
+      ]
+    },
+    "AdmiraltyAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rating",
+        "source_reliability",
+        "information_credibility",
+        "confidence",
+        "independent_sources",
+        "contradictions",
+        "rationale"
+      ],
+      "properties": {
+        "rating": { "$ref": "#/$defs/Admiralty" },
+        "source_reliability": { "type": "string", "enum": ["A", "B", "C", "D", "E", "F"] },
+        "information_credibility": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "independent_sources": { "type": "integer", "minimum": 0 },
+        "contradictions": { "type": "integer", "minimum": 0 },
+        "rationale": { "type": "string", "minLength": 1 }
+      },
+      "description": "rating debe ser la concatenación de source_reliability + information_credibility; la coherencia se valida en Pydantic/DB."
+    },
+    "EEI": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "question"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^EEI-[0-9]{3,}$" },
+        "question": { "type": "string", "minLength": 1 },
+        "indicators": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "status": {
+          "type": "string",
+          "enum": ["OPEN", "IN_PROGRESS", "ANSWERED", "CANCELLED"]
+        },
+        "due_at": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+    "PIR": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "question", "priority", "due_at", "eeis"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^PIR-[0-9]{3,}$" },
+        "question": { "type": "string", "minLength": 1 },
+        "priority": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "due_at": { "$ref": "#/$defs/Timestamp" },
+        "status": {
+          "type": "string",
+          "enum": ["OPEN", "IN_PROGRESS", "ANSWERED", "CANCELLED"]
+        },
+        "eeis": { "type": "array", "items": { "$ref": "#/$defs/EEI" } }
+      }
+    },
+    "TaskingOrder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "assignee_agent", "objective", "constraints", "due_at"],
+      "properties": {
+        "task_id": { "$ref": "#/$defs/Uuid7" },
+        "mission_id": { "$ref": "#/$defs/Uuid7" },
+        "pir_id": { "$ref": "#/$defs/Uuid7" },
+        "eei_id": { "$ref": "#/$defs/Uuid7" },
+        "assignee_agent": { "type": "string", "enum": ["HERMES", "ARACNE", "ARGOS"] },
+        "objective": { "type": "string", "minLength": 1 },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max_nodes": { "type": "integer", "minimum": 1 },
+            "platforms": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "no_active_interaction": { "type": "boolean" },
+            "max_duration_hours": { "type": "integer", "minimum": 1 },
+            "allowed_sources": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ISSUED", "ACCEPTED", "IN_PROGRESS", "COMPLETED", "FAILED", "CANCELLED"]
+        },
+        "due_at": { "$ref": "#/$defs/Timestamp" },
+        "created_at": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+    "OpsecEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "mission_id",
+        "sockpuppet_id",
+        "interaction_id",
+        "severity",
+        "rule_code",
+        "description",
+        "action_taken",
+        "occurred_at"
+      ],
+      "properties": {
+        "event_id": { "$ref": "#/$defs/Uuid7" },
+        "mission_id": { "$ref": "#/$defs/Uuid7" },
+        "sockpuppet_id": { "$ref": "#/$defs/Uuid7" },
+        "interaction_id": { "$ref": "#/$defs/Uuid7" },
+        "severity": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+        "rule_code": { "type": "string", "pattern": "^[A-Z0-9_]{3,64}$" },
+        "description": { "type": "string", "minLength": 1 },
+        "action_taken": { "type": "string", "enum": ["ALLOW", "ABORT", "ESCALATE"] },
+        "occurred_at": { "$ref": "#/$defs/Timestamp" }
+      }
+    },
+    "DisseminationPackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_id",
+        "mission_id",
+        "title",
+        "tlp",
+        "audience",
+        "stix_bundle",
+        "approved_by",
+        "released_at"
+      ],
+      "properties": {
+        "report_id": { "$ref": "#/$defs/Uuid7" },
+        "mission_id": { "$ref": "#/$defs/Uuid7" },
+        "title": { "type": "string", "minLength": 1 },
+        "tlp": { "$ref": "#/$defs/Tlp" },
+        "audience": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "enum": ["ADMIN", "ANALYST", "VIEWER", "EXTERNAL"] }
+        },
+        "stix_bundle": { "$ref": "#/$defs/StixBundle" },
+        "approved_by": { "type": "string", "minLength": 1 },
+        "released_at": { "$ref": "#/$defs/Timestamp" },
+        "recipient": { "type": "string", "minLength": 1 }
+      }
+    },
+    "StixBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "objects"],
+      "properties": {
+        "type": { "type": "string", "const": "bundle" },
+        "id": {
+          "type": "string",
+          "pattern": "^bundle--[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "objects": { "type": "array", "items": { "$ref": "#/$defs/StixObject" } }
+      }
+    },
+    "StixObject": {
+      "type": "object",
+      "description": "Objeto STIX 2.1. Se listan las propiedades usadas por el contrato; el resto se rechaza para evitar campos no gobernados.",
+      "additionalProperties": false,
+      "required": ["type", "spec_version", "id", "created", "modified"],
+      "properties": {
+        "type": { "$ref": "#/$defs/StixType" },
+        "spec_version": { "type": "string", "const": "2.1" },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+--[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "created": { "$ref": "#/$defs/Timestamp" },
+        "modified": { "$ref": "#/$defs/Timestamp" },
+        "created_by_ref": { "type": "string", "minLength": 1 },
+        "revoked": { "type": "boolean" },
+        "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "lang": { "type": "string", "minLength": 2, "maxLength": 35 },
+        "object_marking_refs": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^marking-definition--[0-9a-f-]{36}$" }
+        },
+        "external_references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source_name"],
+            "properties": {
+              "source_name": { "type": "string", "minLength": 1 },
+              "description": { "type": "string" },
+              "url": { "type": "string", "format": "uri" },
+              "external_id": { "type": "string" }
+            }
+          }
+        },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "identity_class": {
+          "type": "string",
+          "enum": ["individual", "group", "organization", "class", "unknown"]
+        },
+        "threat_actor_types": { "type": "array", "items": { "type": "string" } },
+        "goals": { "type": "array", "items": { "type": "string" } },
+        "infrastructure_types": { "type": "array", "items": { "type": "string" } },
+        "account_login": { "type": "string" },
+        "display_name": { "type": "string" },
+        "platform": { "type": "string" },
+        "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+        "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+        "country": { "type": "string", "minLength": 2, "maxLength": 2 },
+        "start_time": { "$ref": "#/$defs/Timestamp" },
+        "end_time": { "$ref": "#/$defs/Timestamp" },
+        "location_ref": { "type": "string" },
+        "report_types": { "type": "array", "items": { "type": "string" } },
+        "published": { "$ref": "#/$defs/Timestamp" },
+        "object_refs": { "type": "array", "items": { "type": "string" } },
+        "first_observed": { "$ref": "#/$defs/Timestamp" },
+        "last_observed": { "$ref": "#/$defs/Timestamp" },
+        "number_observed": { "type": "integer", "minimum": 1 },
+        "content": { "type": "string" },
+        "value": { "type": "string" },
+        "definition_type": { "type": "string" },
+        "definition": { "type": "object", "additionalProperties": true },
+        "opinion": {
+          "type": "string",
+          "enum": ["strongly-disagree", "disagree", "neutral", "agree", "strongly-agree"]
+        },
+        "relationship_type": { "$ref": "#/$defs/RelationshipType" },
+        "source_ref": { "type": "string" },
+        "target_ref": { "type": "string" },
+        "x_admiralty_rating": { "$ref": "#/$defs/Admiralty" },
+        "x_supporting_evidence_ids": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Uuid7" }
+        },
+        "x_valid_from": { "$ref": "#/$defs/Timestamp" },
+        "x_valid_until": {
+          "oneOf": [{ "$ref": "#/$defs/Timestamp" }, { "type": "null" }]
+        },
+        "x_mission_id": { "$ref": "#/$defs/Uuid7" },
+        "x_pir_id": { "$ref": "#/$defs/Uuid7" }
+      }
+    }
+  }
+}

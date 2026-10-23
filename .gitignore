@@ -6,6 +6,7 @@
 # --- Datos sensibles / almacenamiento ---
 storage/raw_reports/*
 storage/processed_chunks/*
+storage/migration/*
 !storage/**/.gitkeep
 !storage/**/README.md
 deploy/nginx/certs/*

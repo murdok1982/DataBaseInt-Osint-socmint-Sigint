@@ -23,6 +23,7 @@ networks:
 
 volumes:
   neo4j_data:
+  postgres_data:
   redis_data:
   reports_data:              # informes + chunks (STORAGE_RAW_DIR/STORAGE_CHUNKS_DIR)
   neo4j_backups:             # destino temporal de neo4j-admin backup (SPEC-06 §3)
@@ -60,7 +61,13 @@ services:
     logging: *default-logging
     networks: [public_net, internal_intel_net]
     env_file: [.env]
-    depends_on: [neo4j, redis]
+    depends_on:
+      neo4j:
+        condition: service_started
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     # SPEC-06 §4: salud sobre el endpoint público del contrato (getInfo).
     healthcheck:
       test:
@@ -150,6 +157,30 @@ services:
       - redis_data:/data
     restart: unless-stopped
     # PROHIBIDO añadir "ports:" aquí (Regla 4)
+
+  # --- PostgreSQL 16 + pgvector (SPEC v3.0.0, Hito 1) -----------------
+  # Capa 1 (ledger append-only) + capa 2 (grafo validado STIX 2.1).
+  # Sin `ports:`: solo accesible desde internal_intel_net (Regla 4).
+  postgres:
+    image: pgvector/pgvector:pg16
+    logging: *default-logging
+    networks: [internal_intel_net]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-osint}
+      POSTGRES_USER: ${POSTGRES_USER:-osint_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env}
+      # El contrato crea los roles svc_* sin contraseña; el owner solo administra.
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../contracts/v3/db-contract.sql:/docker-entrypoint-initdb.d/10-db-contract.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-osint_owner} -d ${POSTGRES_DB:-osint}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
 
   neo4j:
     # Enterprise es OBLIGATORIO por el contrato sellado: SPEC-01/graph-constraints

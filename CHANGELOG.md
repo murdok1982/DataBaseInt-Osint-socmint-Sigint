@@ -4,6 +4,33 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 El proyecto sigue **Spec-Driven Development (SDD)**: cada versión de contrato va
 precedida de su spec y sellada en `contracts/SEAL.md`.
 
+## [v3.0.0-hito1] — 2026-10-23
+
+### Añadido
+- **SPEC.md v3.0.0 aprobada**: célula de inteligencia
+  `DIRECTOR_CELL`/`HERMES`/`ARACNE`/`ARGOS`/`ATENEA`, doble capa
+  ledger + grafo STIX 2.1, Almirantazgo `[A-F][1-6]`, TLP y RLS.
+- **`contracts/v3/db-contract.sql`** (DRAFT): PostgreSQL 16 + `pgvector`,
+  roles por agente, ledger append-only con SHA-256/cadena de custodia,
+  funciones `SECURITY DEFINER`, triggers y vistas `api.*`.
+- **`contracts/v3/agent-contracts.json`**: JSON Schema 2020-12 para los
+  mensajes inter-agente.
+- **`deploy/docker-compose.prod.yml`**: servicio `postgres`
+  (`pgvector/pgvector:pg16`) en `internal_intel_net`, sin puerto público,
+  healthcheck y volumen `postgres_data`.
+- **`PostgresRepository`** (`apps/backend/app/db/postgres_repository.py`):
+  subconjunto compatible con `GraphRepository` para ledger y grafo validado.
+- **ETL Neo4j → PostgreSQL** (`scripts/migrate/neo4j_to_pg.py`) con
+  cuarentena y reconciliación.
+- **Tests T-H1-01…T-H1-10** (`apps/backend/tests/v3/db/`) y workflow
+  `.github/workflows/v3-db.yml`.
+- **ADR-002** (modelo de evidencia y cadena de custodia).
+
+### Pendiente
+- Ejecutar los tests con Docker/Testcontainers y sellar los contratos v3.0.0.
+- Dual-write + `GRAPH_BACKEND=dual` (Hito 1, entregable 1.9).
+- Resolver `DEC-01`…`DEC-08` y `SPEC-GAP-001`…`010` restantes.
+
 ## [v2.1.0] — 2026-10-17
 
 ### Añadido

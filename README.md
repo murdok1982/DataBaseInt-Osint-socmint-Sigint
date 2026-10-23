@@ -4,7 +4,7 @@
 
 **Plataforma de inteligencia de fuentes abiertas con grafo de conocimiento, ingesta NLP y coherencia Humano–IA.**
 
-[![Metodología](https://img.shields.io/badge/metodolog%C3%ADa-SDD%20v2.2-1f6feb?style=flat-square)](.antigravity/sdd-constitution.md)
+[![Metodología](https://img.shields.io/badge/metodolog%C3%ADa-SDD%20v3.0-1f6feb?style=flat-square)](SPEC.md)
 [![Contratos](https://img.shields.io/badge/contratos-sellados%20v2.2.0-0e7490?style=flat-square)](contracts/SEAL.md)
 [![Auditoría](https://img.shields.io/badge/auditor%C3%ADa%20SDD-12%2F12-16a34a?style=flat-square)](.antigravity/audit/2026-10-17-sdd-v2.0.md)
 [![Backend](https://img.shields.io/badge/backend-389%20tests-16a34a?style=flat-square)](apps/backend)
@@ -27,6 +27,13 @@
 > sellado, **gana el contrato**: se corrige el código o se abre una nueva spec y
 > se re-sella. Ningún agente escribe `/apps` o `/deploy` sin una spec que lo
 > autorice.
+
+> **v3.0 en desarrollo — Hito 1.** La [`SPEC.md`](SPEC.md) v3.0.0 fue aprobada
+> el 2026-10-23. Se añade PostgreSQL 16 + `pgvector` como capa de custodia
+> (`staging.raw_intel_ledger`) y grafo validado STIX 2.1, con roles por agente y
+> RLS/TLP. **Neo4j sigue siendo el backend por defecto** (`GRAPH_BACKEND=neo4j`)
+> hasta que `contracts/v3/db-contract.sql` pase Testcontainers y se selle como
+> v3.0.0. Ver [`PLAN.md`](PLAN.md) y [`AUDIT.md`](AUDIT.md).
 
 ## Índice
 

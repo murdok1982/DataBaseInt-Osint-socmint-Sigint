@@ -9,6 +9,12 @@ spec aprobada por el Orquestador.
 | `graph-constraints.cypher` | SPEC-01 | Agente 1 | v2.0.0 |
 | `extraction-schema.json` | SPEC-02 | Agente 2 | v2.0.0 |
 | `openapi.yaml` | SPEC-03 + SPEC-04 | Agentes 3 y 4 | v2.0.0 |
+| `v3/db-contract.sql` | SPEC.md v3.0.0 | Agente 1 | v3.0.0-draft |
+| `v3/agent-contracts.json` | SPEC.md v3.0.0 | Agentes 0/1 | v3.0.0-draft |
+
+> **v3.0.0:** los contratos de `contracts/v3/` están aprobados en `SPEC.md`
+> (2026-10-23) pero **aún no sellados**. Se sellarán tras los tests
+> Testcontainers del Hito 1. Ver [`v3/README.md`](v3/README.md).
 
 ## Ciclo de sellado
 1. Los autores generan la versión inicial (borrador).
