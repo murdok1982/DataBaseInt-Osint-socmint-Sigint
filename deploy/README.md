@@ -33,7 +33,7 @@ deploy/
 | `nginx` | `nginx:1.27-alpine` | `public_net` | **80, 443** | Único entrada TLS (SPEC-04 §3) |
 | `frontend` | build `apps/frontend` | `public_net` | — | Dashboard Next.js |
 | `backend` | build `apps/backend` | `public_net` + `internal_intel_net` | — | FastAPI `/api/v1` |
-| `worker` | build `apps/backend` (misma imagen) | `internal_intel_net` | — | Celery: `osint.workers.ingest_report` |
+| `worker` | build `apps/backend` (misma imagen) | `public_net` + `internal_intel_net` | — | Celery: `osint.workers.ingest_report` (egreso LLM) |
 | `informant-agent` | `deploy/informant-agent.Dockerfile` | `internal_intel_net` | — | Job M2M por lotes |
 | `neo4j` | `neo4j:5-enterprise` | `internal_intel_net` | — | Grafo (jamás expuesto) |
 | `redis` | `redis:7-alpine` | `internal_intel_net` | — | Estado de jobs + broker Celery |

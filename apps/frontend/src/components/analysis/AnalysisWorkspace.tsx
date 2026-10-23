@@ -119,11 +119,11 @@ export default function AnalysisWorkspace({
 
   const refreshOptions = useCallback(async (): Promise<void> => {
     try {
-      const [analysisNodes, edgeList] = await Promise.all([
-        api.listGraphNodes({ label: "Analysis", limit: 200 }),
+      const [analysisList, edgeList] = await Promise.all([
+        api.listAnalyses(),
         api.listGraphEdges({ limit: 500 }),
       ]);
-      setOptions(optionsFromNodes(analysisNodes.items ?? []));
+      setOptions(optionsFromAnalyses(analysisList.items ?? []));
       setEdges(edgeList.items ?? []);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo cargar el grafo analítico.");
@@ -137,6 +137,7 @@ export default function AnalysisWorkspace({
   useEffect(() => {
     if (!selectedId) {
       setAnalysis(null);
+      setRequirements([]);
       return;
     }
     let active = true;
@@ -144,9 +145,13 @@ export default function AnalysisWorkspace({
     setError(null);
     (async () => {
       try {
-        const detail = await api.getAnalysis(selectedId);
+        const [detail, rfiList] = await Promise.all([
+          api.getAnalysis(selectedId),
+          api.listAnalysisRequirements(selectedId),
+        ]);
         if (!active) return;
         setAnalysis(detail);
+        setRequirements(rfiList.items ?? []);
         setDraftTitle(detail.title ?? "");
         setDraftThesis(detail.thesis_summary ?? "");
         setDraftConclusion(detail.conclusion_body ?? "");
@@ -264,7 +269,7 @@ export default function AnalysisWorkspace({
 
   return (
     <div className="grid h-full min-h-0 gap-3 lg:grid-cols-[300px_1fr]">
-      {/* Lista de expedientes (nodos Analysis del grafo) */}
+      {/* Lista de expedientes (listAnalyses, VIEWER+) */}
       <section
         aria-label="Expedientes analíticos"
         className="flex min-h-0 flex-col gap-3 overflow-y-auto rounded-lg border border-base-700 bg-base-900/70 p-4"
