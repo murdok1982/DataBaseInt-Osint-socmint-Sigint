@@ -25,6 +25,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.audit import remember_principal
+from app.core.config import get_settings
 from app.core.apikeys import (
     ApiKeyStore,
     EnvApiKeyStore,
@@ -237,9 +238,21 @@ def get_graph_driver() -> Any:
 
 
 def get_graph_repository() -> Any:
-    """``GraphRepository`` (Agente 1) listo para usar por las rutas de grafo."""
+    """``GraphRepository`` (Agente 1) listo para usar por las rutas de grafo.
+
+    ``GRAPH_BACKEND`` (feature flag de la migración v3): solo ``neo4j`` sirve hoy
+    las rutas de grafo. ``postgres`` y ``dual`` responden **503** explícito hasta
+    que ``PostgresRepository`` tenga paridad con ``GraphRepository`` (PLAN.md,
+    Hito 1); nunca se degrada en silencio a Neo4j.
+    """
     from app.db.repository import GraphRepository
 
+    backend = get_settings().graph_backend
+    if backend != "neo4j":
+        raise ServiceUnavailable(
+            f"GRAPH_BACKEND={backend} aún no sirve las rutas de grafo: el "
+            "repositorio PostgreSQL no tiene paridad todavía (PLAN.md, Hito 1)."
+        )
     try:
         driver = get_graph_driver()
     except ServiceUnavailable:

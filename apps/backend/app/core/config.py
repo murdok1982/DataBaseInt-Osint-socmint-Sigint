@@ -44,6 +44,11 @@ DEFAULT_NEO4J_USER = "neo4j"
 DEFAULT_REDIS_URL = "redis://localhost:6379/0"
 DEFAULT_STORAGE_RAW_DIR = "/storage/raw_reports"
 DEFAULT_STORAGE_CHUNKS_DIR = "/storage/processed_chunks"
+#: Tope de subida de informes (SPEC-02 §1.1). Nginx lo corta antes a 100 MB.
+DEFAULT_MAX_UPLOAD_MB = 50
+#: Backend de grafo (feature flag de la migración v3, PLAN.md Hito 0).
+GRAPH_BACKENDS = frozenset({"neo4j", "postgres", "dual"})
+DEFAULT_GRAPH_BACKEND = "neo4j"
 
 #: Entornos en los que no se admiten secretos por defecto.
 PRODUCTION_ENVIRONMENTS = frozenset({"production", "prod", "staging"})
@@ -85,6 +90,20 @@ def _as_bool(raw: str) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _validate_graph_backend(value: str) -> str:
+    """Normaliza ``GRAPH_BACKEND`` (``neo4j`` | ``postgres`` | ``dual``).
+
+    :raises ValueError: si el valor no es uno de los tres admitidos.
+    """
+    normalized = (value or "").strip().lower() or DEFAULT_GRAPH_BACKEND
+    if normalized not in GRAPH_BACKENDS:
+        raise ValueError(
+            "GRAPH_BACKEND debe ser uno de "
+            f"{sorted(GRAPH_BACKENDS)} (deploy/.env.example)."
+        )
+    return normalized
+
+
 def _validate_security(settings: Any) -> None:
     """Rechaza configuraciones que violan SPEC-04 §2/§2.1 v2.2.
 
@@ -103,6 +122,9 @@ def _validate_security(settings: Any) -> None:
         )
     if int(settings.login_max_failures) < 1 or int(settings.login_window_seconds) < 1:
         raise ValueError("LOGIN_MAX_FAILURES y LOGIN_WINDOW_SECONDS deben ser > 0.")
+    if int(settings.max_upload_mb) < 1:
+        raise ValueError("MAX_UPLOAD_MB debe ser un entero >= 1.")
+    _validate_graph_backend(settings.graph_backend)
     if (
         not settings.admin_totp_required
         and settings.environment.strip().lower() in PRODUCTION_ENVIRONMENTS
@@ -164,6 +186,10 @@ if PYDANTIC_SETTINGS_AVAILABLE:
         storage_raw_dir: str = DEFAULT_STORAGE_RAW_DIR
         storage_chunks_dir: str = DEFAULT_STORAGE_CHUNKS_DIR
 
+        # --- Ingesta y migración v3 (SPEC-02 §1.1 · PLAN.md Hito 0) ---
+        max_upload_mb: int = DEFAULT_MAX_UPLOAD_MB
+        graph_backend: str = DEFAULT_GRAPH_BACKEND
+
         def model_post_init(self, __context: Any) -> None:
             """Normaliza el secreto y los umbrales tras leer el entorno."""
             self.jwt_secret_key = _resolve_jwt_secret(
@@ -175,6 +201,8 @@ if PYDANTIC_SETTINGS_AVAILABLE:
             self.extraction_confidence_threshold = float(
                 self.extraction_confidence_threshold
             )
+            self.max_upload_mb = int(self.max_upload_mb)
+            self.graph_backend = _validate_graph_backend(self.graph_backend)
             _validate_security(self)
 
         # --- Derivados (segundos, para ``expires_in`` del contrato) ---
@@ -186,6 +214,10 @@ if PYDANTIC_SETTINGS_AVAILABLE:
         @property
         def refresh_token_expire_seconds(self) -> int:
             return int(self.refresh_token_expire_days) * 86400
+
+        @property
+        def max_upload_bytes(self) -> int:
+            return int(self.max_upload_mb) * 1024 * 1024
 
         @property
         def is_production(self) -> bool:
@@ -218,6 +250,8 @@ else:  # pragma: no cover - solo si falta pydantic-settings
         )
         storage_raw_dir: str = DEFAULT_STORAGE_RAW_DIR
         storage_chunks_dir: str = DEFAULT_STORAGE_CHUNKS_DIR
+        max_upload_mb: int = DEFAULT_MAX_UPLOAD_MB
+        graph_backend: str = DEFAULT_GRAPH_BACKEND
 
         def __post_init__(self) -> None:
             env_spec: tuple[tuple[str, str, Callable[[str], Any]], ...] = (
@@ -248,6 +282,8 @@ else:  # pragma: no cover - solo si falta pydantic-settings
                 ),
                 ("storage_raw_dir", "STORAGE_RAW_DIR", str),
                 ("storage_chunks_dir", "STORAGE_CHUNKS_DIR", str),
+                ("max_upload_mb", "MAX_UPLOAD_MB", int),
+                ("graph_backend", "GRAPH_BACKEND", str),
             )
             for attr, env_name, caster in env_spec:
                 raw = os.environ.get(env_name)
@@ -261,6 +297,7 @@ else:  # pragma: no cover - solo si falta pydantic-settings
                 self.jwt_secret_key, self.environment
             )
             self.jwt_algorithm = (self.jwt_algorithm or DEFAULT_JWT_ALGORITHM).upper()
+            self.graph_backend = _validate_graph_backend(self.graph_backend)
             _validate_security(self)
 
         @property
@@ -270,6 +307,10 @@ else:  # pragma: no cover - solo si falta pydantic-settings
         @property
         def refresh_token_expire_seconds(self) -> int:
             return int(self.refresh_token_expire_days) * 86400
+
+        @property
+        def max_upload_bytes(self) -> int:
+            return int(self.max_upload_mb) * 1024 * 1024
 
         @property
         def is_production(self) -> bool:

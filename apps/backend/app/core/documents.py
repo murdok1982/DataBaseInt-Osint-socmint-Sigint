@@ -14,12 +14,17 @@ datos.
 from __future__ import annotations
 
 import io
+import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from app.core.config import get_settings
-from app.core.errors import ServiceUnavailable
+from app.core.errors import (
+    CODE_PAYLOAD_TOO_LARGE,
+    CODE_UNSUPPORTED_MEDIA_TYPE,
+    ServiceUnavailable,
+)
 
 #: Extensiones admitidas por SPEC-02 §1.1.
 ALLOWED_EXTENSIONS: tuple[str, ...] = (
@@ -85,6 +90,91 @@ def is_pdf(content: bytes, filename: str | None = None) -> bool:
     return safe_extension(filename) == DEFAULT_EXTENSION and content[:4] == PDF_MAGIC
 
 
+class UploadRejected(ValueError):
+    """Subida rechazada antes de almacenarla (SPEC-02 §1.1).
+
+    ``status_code`` y ``code`` se traducen al sobre de error del contrato en la
+    capa de API; este módulo no depende de FastAPI.
+    """
+
+    def __init__(self, status_code: int, code: str, message: str) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.code = code
+
+
+class _ReadableUpload(Protocol):
+    async def read(self, size: int = -1) -> bytes: ...
+
+
+async def read_upload_limited(file: _ReadableUpload, max_bytes: int) -> bytes:
+    """Lee la subida en bloques y corta en cuanto supera ``max_bytes``.
+
+    Evita cargar en memoria un archivo arbitrariamente grande antes de decidir.
+
+    :raises UploadRejected: 413 ``PAYLOAD_TOO_LARGE`` si excede el tope.
+    """
+    chunk_size = 1024 * 1024
+    buffer = bytearray()
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        buffer.extend(chunk)
+        if len(buffer) > max_bytes:
+            raise UploadRejected(
+                413,
+                CODE_PAYLOAD_TOO_LARGE,
+                f"El informe supera el tamaño máximo permitido "
+                f"({max_bytes // (1024 * 1024)} MB; MAX_UPLOAD_MB).",
+            )
+    return bytes(buffer)
+
+
+def validate_upload(filename: str | None, content: bytes) -> None:
+    """Valida extensión **y** contenido de la subida (SPEC-02 §1.1).
+
+    - La extensión debe estar en :data:`ALLOWED_EXTENSIONS`; no se asume PDF
+      por defecto para nombres desconocidos.
+    - ``.pdf`` debe empezar por ``%PDF``; ``.json`` debe ser JSON válido y el
+      resto de formatos de texto deben decodificar como UTF-8 estricto.
+
+    :raises UploadRejected: 415 ``UNSUPPORTED_MEDIA_TYPE``.
+    """
+    suffix = Path(filename or "").suffix.lower()
+    if suffix not in ALLOWED_EXTENSIONS:
+        raise UploadRejected(
+            415,
+            CODE_UNSUPPORTED_MEDIA_TYPE,
+            "Formato no admitido: se aceptan PDF, TXT, Markdown y JSON.",
+        )
+    if suffix == ".pdf":
+        if content[:4] != PDF_MAGIC:
+            raise UploadRejected(
+                415,
+                CODE_UNSUPPORTED_MEDIA_TYPE,
+                "El archivo no es un PDF válido (cabecera %PDF ausente).",
+            )
+        return
+    try:
+        text = content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise UploadRejected(
+            415,
+            CODE_UNSUPPORTED_MEDIA_TYPE,
+            "El texto del informe no está codificado en UTF-8.",
+        ) from exc
+    if suffix == ".json":
+        try:
+            json.loads(text)
+        except ValueError as exc:
+            raise UploadRejected(
+                415,
+                CODE_UNSUPPORTED_MEDIA_TYPE,
+                "El archivo .json no contiene JSON válido.",
+            ) from exc
+
+
 def extract_pages(content: bytes, filename: str | None = None) -> list[str]:
     """Extrae el texto por **páginas** (SPEC-02 §1.3).
 
@@ -130,6 +220,9 @@ def report_metadata(
 __all__ = [
     "ALLOWED_EXTENSIONS",
     "PDF_AVAILABLE",
+    "UploadRejected",
+    "read_upload_limited",
+    "validate_upload",
     "safe_extension",
     "storage_root",
     "raw_report_path",

@@ -61,7 +61,15 @@ from app.api.deps import (
     get_preflight_service,
     service_unavailable,
 )
-from app.core.documents import extract_pages, report_metadata, save_raw_report
+from app.core.config import get_settings
+from app.core.documents import (
+    UploadRejected,
+    extract_pages,
+    read_upload_limited,
+    report_metadata,
+    save_raw_report,
+    validate_upload,
+)
 from app.core.errors import CODE_CONFLICT, CODE_NOT_FOUND, detail_from_code
 from app.core.jobs import (
     STATUS_DONE,
@@ -206,7 +214,7 @@ async def create_ingest_job(
     title: str = Form(..., min_length=1, max_length=512),
 ) -> IngestJob:
     """Recibe el informe, lo almacena y encola su extracción (202 inmediato)."""
-    content = await file.read()
+    content = await _receive_upload(file)
     if not content:
         raise service_unavailable("El archivo recibido está vacío.")
 
@@ -243,6 +251,23 @@ async def create_ingest_job(
 # =====================================================================
 # POST /ingest/informant — createInformantIngestJob (AI_INFORMANT)
 # =====================================================================
+async def _receive_upload(file: UploadFile) -> bytes:
+    """Lee y valida la subida (tamaño, extensión y contenido) antes de guardarla.
+
+    El rechazo se traduce al sobre de error del contrato: 413 si excede
+    ``MAX_UPLOAD_MB`` y 415 si el formato o el contenido no son admitidos.
+    """
+    try:
+        content = await read_upload_limited(file, get_settings().max_upload_bytes)
+        validate_upload(file.filename, content)
+    except UploadRejected as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=detail_from_code(exc.code, str(exc)),
+        ) from exc
+    return content
+
+
 def _conflict(message: str, *, code: str = CODE_CONFLICT) -> HTTPException:
     """``409`` con el sobre de error del contrato (SPEC-03 §5)."""
     return HTTPException(
@@ -339,7 +364,7 @@ async def create_informant_ingest_job(
             f"payload no valida contra extraction-schema.json: {exc}"
         ) from exc
 
-    content = await file.read()
+    content = await _receive_upload(file)
     if not content:
         raise service_unavailable("El archivo recibido está vacío.")
 
