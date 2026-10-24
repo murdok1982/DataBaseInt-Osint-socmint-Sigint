@@ -118,6 +118,20 @@ def test_backup_script_encrypts_and_writes_checksums() -> None:
     assert "BACKUP_RETENTION_DAYS" in script
 
 
+def test_backup_script_dumps_the_postgres_ledger_encrypted() -> None:
+    """PostgreSQL custodia el ledger v3: su volcado forma parte de la copia."""
+    script = (SCRIPTS / "backup.sh").read_text(encoding="utf-8")
+    assert "pg_dump --format=custom" in script
+    assert "postgres.dump.gpg" in script
+    assert "sha256sum neo4j.tar.gz.gpg postgres.dump.gpg storage.tar.gz.gpg" in script
+
+
+def test_restore_script_restores_the_postgres_ledger() -> None:
+    script = (SCRIPTS / "restore.sh").read_text(encoding="utf-8")
+    assert "pg_restore --clean --if-exists" in script
+    assert "postgres.dump.gpg" in script
+
+
 def _bash() -> str:
     bash = shutil.which("bash")
     if not bash or not shutil.which("sha256sum"):
@@ -125,10 +139,15 @@ def _bash() -> str:
     return bash
 
 
+#: Sumas de una copia completa v3 (Neo4j + PostgreSQL + informes).
+_CHECKSUM_COMMAND = "sha256sum neo4j.tar.gz.gpg postgres.dump.gpg storage.tar.gz.gpg > SHA256SUMS"
+
+
 def _fake_backup(tmp_path: Path) -> tuple[Path, Path]:
     backup = tmp_path / "20261017T023000Z"
     backup.mkdir()
     (backup / "neo4j.tar.gz.gpg").write_bytes(b"cifrado-neo4j")
+    (backup / "postgres.dump.gpg").write_bytes(b"cifrado-postgres")
     (backup / "storage.tar.gz.gpg").write_bytes(b"cifrado-storage")
     passphrase = tmp_path / "passphrase"
     passphrase.write_text("frase-de-prueba", encoding="utf-8")
@@ -161,11 +180,7 @@ def _run_restore(bash: str, backup: Path, passphrase: Path, *args: str) -> Any:
 def test_restore_verifies_and_stops_without_explicit_confirmation(tmp_path: Path) -> None:
     bash = _bash()
     backup, passphrase = _fake_backup(tmp_path)
-    subprocess.run(
-        [bash, "-c", "sha256sum neo4j.tar.gz.gpg storage.tar.gz.gpg > SHA256SUMS"],
-        cwd=backup,
-        check=True,
-    )
+    subprocess.run([bash, "-c", _CHECKSUM_COMMAND], cwd=backup, check=True)
     result = _run_restore(bash, backup, passphrase)
     assert result.returncode == 0, result.stderr
     assert "--yes" in result.stdout
@@ -174,12 +189,23 @@ def test_restore_verifies_and_stops_without_explicit_confirmation(tmp_path: Path
 def test_restore_refuses_a_tampered_backup(tmp_path: Path) -> None:
     bash = _bash()
     backup, passphrase = _fake_backup(tmp_path)
+    subprocess.run([bash, "-c", _CHECKSUM_COMMAND], cwd=backup, check=True)
+    (backup / "neo4j.tar.gz.gpg").write_bytes(b"manipulado")
+    result = _run_restore(bash, backup, passphrase, "--yes")
+    assert result.returncode != 0
+    assert "NO se restaura" in result.stderr
+
+
+def test_restore_refuses_a_pre_v3_backup_without_the_ledger_dump(tmp_path: Path) -> None:
+    """Una copia v2 (sin volcado de PostgreSQL) no se restaura a medias."""
+    bash = _bash()
+    backup, passphrase = _fake_backup(tmp_path)
+    (backup / "postgres.dump.gpg").unlink()
     subprocess.run(
         [bash, "-c", "sha256sum neo4j.tar.gz.gpg storage.tar.gz.gpg > SHA256SUMS"],
         cwd=backup,
         check=True,
     )
-    (backup / "neo4j.tar.gz.gpg").write_bytes(b"manipulado")
     result = _run_restore(bash, backup, passphrase, "--yes")
     assert result.returncode != 0
-    assert "NO se restaura" in result.stderr
+    assert "falta postgres.dump.gpg" in result.stderr

@@ -8,8 +8,12 @@
 #
 # Genera en ${BACKUP_DIR}/<UTC-timestamp>/:
 #   neo4j.tar.gz.gpg     copia en caliente (neo4j-admin database backup)
+#   postgres.dump.gpg    volcado pg_dump -Fc del ledger v3 (PostgreSQL 16)
 #   storage.tar.gz.gpg   volumen de informes (/storage del backend)
 #   SHA256SUMS           sumas de los artefactos cifrados
+#
+# PostgreSQL custodia el ledger de cadena de custodia (PLAN.md Hito 1): su
+# volcado es obligatorio. Si el servicio no responde, la copia FALLA.
 #
 # Los datos en claro solo atraviesan tuberías (contenedor -> gpg): nunca
 # se escriben sin cifrar en el disco del host.
@@ -72,19 +76,26 @@ mkdir -p "${TARGET}"
 cleanup() { compose exec -T neo4j rm -rf "${STAGE}" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
-echo "[1/4] Copia en caliente de Neo4j (${NEO4J_DATABASE})…"
+echo "[1/5] Copia en caliente de Neo4j (${NEO4J_DATABASE})…"
 compose exec -T neo4j mkdir -p "${STAGE}"
 compose exec -T neo4j neo4j-admin database backup \
   --to-path="${STAGE}" "${NEO4J_DATABASE}"
 compose exec -T neo4j tar -czf - -C "${STAGE}" . | encrypt_to "${TARGET}/neo4j.tar.gz.gpg"
 
-echo "[2/4] Volumen de informes (/storage)…"
+echo "[2/5] Volcado de PostgreSQL (ledger v3)…"
+# Las credenciales se leen DENTRO del contenedor (variables de POSTGRES_*):
+# nunca viajan por la línea de comandos del host.
+compose exec -T postgres sh -c \
+  'pg_dump --format=custom --no-owner --no-privileges -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  | encrypt_to "${TARGET}/postgres.dump.gpg"
+
+echo "[3/5] Volumen de informes (/storage)…"
 compose exec -T backend tar -czf - -C /storage . | encrypt_to "${TARGET}/storage.tar.gz.gpg"
 
-echo "[3/4] Manifiesto SHA256SUMS…"
-( cd "${TARGET}" && sha256sum neo4j.tar.gz.gpg storage.tar.gz.gpg > SHA256SUMS )
+echo "[4/5] Manifiesto SHA256SUMS…"
+( cd "${TARGET}" && sha256sum neo4j.tar.gz.gpg postgres.dump.gpg storage.tar.gz.gpg > SHA256SUMS )
 
-echo "[4/4] Retención: se eliminan copias de más de ${BACKUP_RETENTION_DAYS} días…"
+echo "[5/5] Retención: se eliminan copias de más de ${BACKUP_RETENTION_DAYS} días…"
 find "${BACKUP_DIR}" -mindepth 1 -maxdepth 1 -type d -name '20*Z' \
   -mtime +"${BACKUP_RETENTION_DAYS}" -print -exec rm -rf {} +
 
