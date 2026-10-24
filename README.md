@@ -7,7 +7,7 @@
 [![Metodología](https://img.shields.io/badge/metodolog%C3%ADa-SDD%20v3.0-1f6feb?style=flat-square)](SPEC.md)
 [![Contratos](https://img.shields.io/badge/contratos-sellados%20v2.2.0-0e7490?style=flat-square)](contracts/SEAL.md)
 [![Auditoría](https://img.shields.io/badge/auditor%C3%ADa%20SDD-12%2F12-16a34a?style=flat-square)](.antigravity/audit/2026-10-17-sdd-v2.0.md)
-[![Backend](https://img.shields.io/badge/backend-389%20tests-16a34a?style=flat-square)](apps/backend)
+[![Backend](https://img.shields.io/badge/backend-391%20tests-16a34a?style=flat-square)](apps/backend)
 [![Informant](https://img.shields.io/badge/informant--agent-36%20tests-16a34a?style=flat-square)](apps/informant-agent)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -53,6 +53,7 @@
 - [14. Gobernanza de agentes](#14-gobernanza-de-agentes)
 - [15. Solución de problemas](#15-solución-de-problemas)
 - [16. Aviso legal](#16-aviso-legal)
+- [Manual técnico](docs/MANUAL_TECNICO.md)
 
 ---
 
@@ -121,7 +122,7 @@ las tesis humanas y eleva contradicciones en lugar de sobrescribirlas.
 ```mermaid
 flowchart LR
     subgraph CLIENTE["Cliente"]
-        UI["Dashboard<br/>Next.js 14"]
+        UI["Dashboard<br/>Next.js 15"]
     end
 
     subgraph BORDE["Borde"]
@@ -158,7 +159,7 @@ flowchart LR
 | Componente | Responsabilidad | Tecnología |
 | :--- | :--- | :--- |
 | `apps/backend` | API REST, RBAC, ingesta, Coherence Engine, GraphRAG | Python 3.12 · FastAPI · Pydantic v2 |
-| `apps/frontend` | Dashboard de 4 vistas y consola | Next.js 14 · TypeScript · Tailwind · Cytoscape |
+| `apps/frontend` | Dashboard de 4 vistas y consola | Next.js 15 · TypeScript · Tailwind · Cytoscape |
 | `apps/informant-agent` | Recolección OSINT y extracción guiada (M2M) | Python · httpx · jsonschema |
 | `neo4j` | Grafo de conocimiento, constraints e índices | Neo4j 5 Enterprise + APOC |
 | `redis` | Broker Celery y estado de jobs | Redis 7 |
@@ -229,7 +230,7 @@ sequenceDiagram
 | **Backend** | Python 3.12 · FastAPI · Pydantic v2 · Uvicorn · PyJWT · Argon2id · jsonschema |
 | **Grafos** | Neo4j 5 Enterprise · APOC · Cypher · índices vectoriales por label |
 | **Asíncrono** | Celery 5 · Redis 7 · WebSocket |
-| **Frontend** | Next.js 14 (App Router) · React 18 · TypeScript estricto · Tailwind CSS · Cytoscape.js |
+| **Frontend** | Next.js 15 (App Router) · React 19 · TypeScript estricto · Tailwind CSS · Cytoscape.js |
 | **Informante IA** | Python · httpx · Pydantic · jsonschema |
 | **Infraestructura** | Docker Compose · Nginx 1.27 · TLS 1.3 · UFW · fail2ban |
 | **Calidad** | pytest · ESLint · `tsc` · Redocly · ajv · auditoría SDD propia |
@@ -504,7 +505,7 @@ npm run build
 | :--- | :--- |
 | Contratos vs `SEAL.md` | **3/3 hashes OK** |
 | Auditoría SDD | **12/12** |
-| Backend | **389 passed**, 2 skipped |
+| Backend | **391 passed**, 12 skipped en local sin Docker (Testcontainers corre en CI) |
 | Informant Agent | **36 passed** |
 | Frontend | `tsc` ✓ · `lint` ✓ · `build` ✓ |
 | Docker Compose | `config` ✓ · **1** solo `ports:` |

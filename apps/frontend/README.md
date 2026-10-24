@@ -6,7 +6,7 @@
 > Contrato consumido: [`contracts/openapi.yaml`](../../contracts/openapi.yaml) (**v2.0.0, SELLADO**).
 > Referencia visual: [`.antigravity/midjourney-ui-prompts.md`](../../.antigravity/midjourney-ui-prompts.md).
 
-Stack: **Next.js 14 (App Router) + TypeScript estricto + Tailwind CSS + Cytoscape.js**.
+Stack: **Next.js 15 (App Router) + React 19 + TypeScript estricto + Tailwind CSS + Cytoscape.js**.
 
 ---
 
@@ -36,7 +36,7 @@ npm run build            # build de producción (incluye lint + tipos)
 | `NEXT_PUBLIC_API_BASE_URL` | Base de la API. Vacío → `/api/v1` (mismo origen / Nginx). |
 | `BACKEND_ORIGIN` | Sólo dev: destino del rewrite `/api/v1/*` de Next. |
 
-Autenticación de sesión: access token JWT en memoria (**Bearer**, 30 min,
+Autenticación de sesión: access token JWT en memoria (**Bearer**, 15 min,
 SPEC-04 §2) + refresh token en cookie **HttpOnly/Secure** (todas las llamadas se
 hacen con `credentials: "include"`). **2FA (TOTP)** opcional en el login
 (`totp_code`, obligatorio para ADMIN — SPEC-04 §2).

@@ -342,10 +342,9 @@ plugin o abrir egress puntual durante el aprovisionamiento.
 
 ### Nota — 2FA/TOTP
 
-`openapi.yaml` declara `totp_code` en `LoginRequest` y SPEC-04 §2 lo exige para
-`ADMIN`; el backend actual (`app/api/v1/auth.py`) **no** valida TOTP (zona
-Agente 3, fuera del alcance de este paquete). El smoke test lo soporta vía
-`SMOKE_TOTP_CODE` cuando se implemente.
+El backend **sí** valida TOTP (2FA obligatorio para `ADMIN`, SPEC-04 §2) en
+`app/api/v1/auth.py`, con antirrepetición de códigos. El smoke test necesita
+`SMOKE_TOTP_CODE` con un código vigente para el operador ADMIN.
 
 ### Nota — ruta del contrato dentro del contenedor
 

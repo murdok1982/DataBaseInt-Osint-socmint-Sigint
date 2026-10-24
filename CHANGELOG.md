@@ -4,6 +4,51 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 El proyecto sigue **Spec-Driven Development (SDD)**: cada versión de contrato va
 precedida de su spec y sellada en `contracts/SEAL.md`.
 
+## [Sin publicar]
+
+### Añadido
+- **Copia de seguridad de PostgreSQL** (`deploy/scripts/backup.sh`): volcado
+  `pg_dump -Fc` cifrado (`postgres.dump.gpg`) incluido en `SHA256SUMS`.
+  `restore.sh` lo restaura con `pg_restore --clean --if-exists` y rechaza
+  copias incompletas (anteriores a v3).
+- **Integración continua** (`.github/workflows/ci.yml`): contratos y auditoría
+  SDD, backend con cobertura mínima del 80 %, informante, frontend (tsc, lint,
+  Vitest con cobertura, build y Playwright), validación de Compose y build de
+  imágenes, gitleaks y auditorías de dependencias (pip-audit y npm).
+- **Pre-commit** (`.pre-commit-config.yaml`): gitleaks y comprobaciones de
+  claves privadas, ficheros grandes y formatos.
+- **Límite de subida** `MAX_UPLOAD_MB` (50 MB por defecto): lectura en bloques,
+  respuesta `413 PAYLOAD_TOO_LARGE`.
+- **Validación de formato** de la subida: extensión admitida, cabecera `%PDF`,
+  UTF-8 estricto y JSON válido; rechazo con `415 UNSUPPORTED_MEDIA_TYPE`.
+- **Métricas Prometheus** en `/metrics` (fuera de `/api/v1`, solo red interna):
+  contador y latencia por plantilla de ruta. Servicio `prometheus` opcional
+  (`--profile monitoring`) con `deploy/monitoring/prometheus.yml`.
+- **Feature flag `GRAPH_BACKEND`** (`neo4j` | `postgres` | `dual`), validado al
+  arrancar. `postgres` y `dual` responden 503 hasta tener paridad.
+- **Pruebas frontend**: Vitest (63 pruebas unitarias, cobertura ≥ 80 %) y
+  Playwright (4 pruebas e2e del flujo de sesión con la API simulada).
+- **Pruebas backend sin Docker** para la capa PostgreSQL (pool falso) y para
+  los límites de subida y la configuración.
+
+### Cambiado
+- **Next.js 14 → 15.5.28** y **React 18 → 19.1.10** para cerrar avisos de
+  seguridad críticos y altos de la línea 14 (incluida ejecución remota de
+  código en el optimizador de imágenes). Tipos `JSX` migrados a `ReactElement`.
+- `postcss` fijado a 8.5.31 mediante `overrides` (avisos en el árbol de Next).
+- Vitest 2 → 4.1.12 y Playwright 1.49 → 1.62.0.
+
+### Pendiente
+- `contracts/openapi.yaml` (sellado v2.2.0) no documenta aún las respuestas
+  `413` y `415` de `createIngestJob` y `createInformantIngestJob`; requiere una
+  spec y un nuevo sellado antes de cambiarlo.
+- `AGENT_MODE`: definido en PLAN.md para agentes que aún no existen; no se
+  implementa hasta que se fije su semántica.
+- Tailwind 3.4 conserva 3 avisos moderados (solo en el build de CSS); el
+  arreglo exige migrar a Tailwind 4.
+- Las pruebas `tests/v3/db` (PostgreSQL real) requieren Docker: se ejecutan en
+  el workflow `v3-db`, no en local sin Docker.
+
 ## [v3.0.0-hito1] — 2026-10-23
 
 ### Añadido
