@@ -32,3 +32,9 @@ next-env.d.ts
 
 # openapi codegen output is committed (placeholder), keep it tracked
 !src/types/api.d.ts
+
+# pruebas del frontend (Vitest / Playwright)
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
