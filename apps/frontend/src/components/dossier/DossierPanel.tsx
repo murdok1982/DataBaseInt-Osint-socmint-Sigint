@@ -16,6 +16,7 @@
  * SPEC-04 §1). La autorización real se aplica en el backend.
  */
 
+import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
 import AnalysisCitationCard from "@/components/dossier/AnalysisCitationCard";
@@ -75,7 +76,7 @@ export default function DossierPanel({
   onLock,
   onDelete,
   onOpenAnalysis,
-}: DossierPanelProps): JSX.Element {
+}: DossierPanelProps): ReactElement {
   const [evidence, setEvidence] = useState<EvidenceSelection | null>(null);
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");

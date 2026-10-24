@@ -21,7 +21,7 @@ export default function AnalysisCitationCard({
   quote,
   note,
   onOpenAnalysis,
-}: AnalysisCitationCardProps): JSX.Element {
+}: AnalysisCitationCardProps): ReactElement {
   return (
     <div className="rounded-md border border-neon-violet/40 bg-base-950/60 p-3">
       <p className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-neon-violet">
@@ -49,4 +49,5 @@ export default function AnalysisCitationCard({
       </div>
     </div>
   );
-}
+}import type { ReactElement } from "react";
+

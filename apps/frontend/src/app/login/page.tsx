@@ -7,6 +7,7 @@
  * Traza a: `authLogin` (con `totp_code` opcional), `authMe` (vía AuthContext).
  */
 
+import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -14,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/services/api";
 
-export default function LoginPage(): JSX.Element {
+export default function LoginPage(): ReactElement {
   const { login, status } = useAuth();
   const router = useRouter();
   const [username, setUsername] = useState("");

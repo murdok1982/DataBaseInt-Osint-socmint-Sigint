@@ -12,6 +12,7 @@
  * nunca un control de acceso.
  */
 
+import type { ReactElement } from "react";
 import {
   createContext,
   useCallback,
@@ -96,7 +97,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 /** Margen de seguridad antes de expirar el access token (SPEC-04 §2: 30 min). */
 const REFRESH_MARGIN_MS = 60_000;
 
-export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
+export function AuthProvider({ children }: { children: ReactNode }): ReactElement {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

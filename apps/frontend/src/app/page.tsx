@@ -14,6 +14,7 @@
  * ocultan según el rol (SPEC-04 §1); la seguridad real vive en el backend.
  */
 
+import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -66,7 +67,7 @@ function toIsoEnd(date: string): string | undefined {
   return date ? new Date(`${date}T23:59:59.999Z`).toISOString() : undefined;
 }
 
-export default function DashboardPage(): JSX.Element {
+export default function DashboardPage(): ReactElement {
   const { status, user, role, logout, can } = useAuth();
   const router = useRouter();
 

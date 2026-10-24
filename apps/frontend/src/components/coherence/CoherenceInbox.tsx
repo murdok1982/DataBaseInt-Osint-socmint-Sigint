@@ -17,6 +17,7 @@
  * Se muestra por tanto `description` como discrepancia, sin inventar campos.
  */
 
+import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { formatDate } from "@/lib/labels";
@@ -74,7 +75,7 @@ export default function CoherenceInbox({
   onOpenAnalysis,
   onOpenEntity,
   onChanged,
-}: CoherenceInboxProps): JSX.Element {
+}: CoherenceInboxProps): ReactElement {
   const [alerts, setAlerts] = useState<CoherenceAlert[]>([]);
   const [statusFilter, setStatusFilter] = useState<CoherenceStatus | "">("");
   const [loading, setLoading] = useState(false);

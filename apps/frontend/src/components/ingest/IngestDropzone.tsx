@@ -10,6 +10,7 @@
  * El componente se OCULTA por completo para VIEWER.
  */
 
+import type { ReactElement } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/context/AuthContext";
@@ -35,7 +36,7 @@ export interface IngestDropzoneProps {
   onCompleted?: (job: IngestJob) => void;
 }
 
-export default function IngestDropzone({ onCompleted }: IngestDropzoneProps): JSX.Element | null {
+export default function IngestDropzone({ onCompleted }: IngestDropzoneProps): ReactElement | null {
   const { can } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");

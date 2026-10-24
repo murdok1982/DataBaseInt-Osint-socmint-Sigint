@@ -32,7 +32,7 @@ export default function Timeline({
   value,
   onChange,
   disabled = false,
-}: TimelineProps): JSX.Element {
+}: TimelineProps): ReactElement {
   const minTime = new Date(min).getTime();
   const maxTime = new Date(max).getTime();
   const span = Math.max(maxTime - minTime, 1);
@@ -94,4 +94,5 @@ export default function Timeline({
       </div>
     </section>
   );
-}
+}import type { ReactElement } from "react";
+

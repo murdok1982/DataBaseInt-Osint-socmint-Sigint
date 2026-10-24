@@ -17,6 +17,7 @@
  * (`analysis:write`, SPEC-04 §1).
  */
 
+import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ANALYSIS_EVIDENCE_EDGE_TYPES, edgeDisplay } from "@/lib/labels";
@@ -93,7 +94,7 @@ export default function AnalysisWorkspace({
   onOpenReport,
   onOpenEntity,
   onChanged,
-}: AnalysisWorkspaceProps): JSX.Element {
+}: AnalysisWorkspaceProps): ReactElement {
   const [options, setOptions] = useState<AnalysisOption[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);

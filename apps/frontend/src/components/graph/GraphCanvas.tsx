@@ -15,6 +15,7 @@
  * render en servidor (SSR) de Next.js App Router.
  */
 
+import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { Core, ElementDefinition } from "cytoscape";
 
@@ -81,7 +82,7 @@ export default function GraphCanvas({
   onSelectNode,
   onExpandNode,
   loading = false,
-}: GraphCanvasProps): JSX.Element {
+}: GraphCanvasProps): ReactElement {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
   const [ready, setReady] = useState(false);

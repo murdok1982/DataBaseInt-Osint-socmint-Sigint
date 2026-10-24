@@ -13,6 +13,7 @@
  * estructurada.
  */
 
+import type { ReactElement } from "react";
 import { ANALYTIC_NODE_LABELS, ENTITY_LABELS, LABEL_META, OSINT_NODE_LABELS } from "@/lib/labels";
 import type { EntityLabel } from "@/services/api";
 
@@ -44,7 +45,7 @@ export default function GraphFilters({
   onReset,
   disabled = false,
   resultCount,
-}: GraphFiltersProps): JSX.Element {
+}: GraphFiltersProps): ReactElement {
   return (
     <section
       aria-label="Filtros del grafo"

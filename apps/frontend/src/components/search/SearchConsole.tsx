@@ -13,6 +13,7 @@
  * `citations: []` (SPEC-03 §8).
  */
 
+import type { ReactElement } from "react";
 import { useState } from "react";
 
 import { api, ApiError } from "@/services/api";
@@ -49,7 +50,7 @@ export default function SearchConsole({
   onSubgraph,
   onOpenReport,
   onOpenAnalysis,
-}: SearchConsoleProps): JSX.Element {
+}: SearchConsoleProps): ReactElement {
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<Exchange[]>([]);
   const [loading, setLoading] = useState(false);

@@ -13,6 +13,7 @@
  * la representa `AnalysisCitationCard` (no hay PDF).
  */
 
+import type { ReactElement } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ApiError, api } from "@/services/api";
@@ -78,7 +79,7 @@ export default function ReportViewer({
   reportId,
   pageNumber,
   quote,
-}: ReportViewerProps): JSX.Element {
+}: ReportViewerProps): ReactElement {
   const [report, setReport] = useState<Report | null>(null);
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
