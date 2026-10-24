@@ -50,9 +50,8 @@ services:
     build: ../apps/frontend
     logging: *default-logging
     networks: [public_net]
-    environment:
-      # Sin NEXT_PUBLIC_API_BASE_URL: el cliente usa /api/v1 (mismo origen, Nginx).
-      # Las variables NEXT_PUBLIC_* se incrustan en el build, no en el arranque.
+    # Sin variables de entorno: el cliente usa /api/v1 (mismo origen, Nginx).
+    # Las NEXT_PUBLIC_* se incrustan en el build, no en el arranque.
     depends_on: [backend]
     restart: unless-stopped
     # Sin ports: solo accesible vía Nginx en public_net

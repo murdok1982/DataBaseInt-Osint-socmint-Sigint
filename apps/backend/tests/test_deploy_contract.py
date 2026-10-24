@@ -209,3 +209,20 @@ def test_restore_refuses_a_pre_v3_backup_without_the_ledger_dump(tmp_path: Path)
     result = _run_restore(bash, backup, passphrase, "--yes")
     assert result.returncode != 0
     assert "falta postgres.dump.gpg" in result.stderr
+
+
+# =====================================================================
+# Regresiones detectadas por el CI (sin Docker en local)
+# =====================================================================
+def test_compose_services_have_valid_environment_blocks(compose: dict[str, Any]) -> None:
+    """``environment`` vacío es ``null`` y ``docker compose config`` lo rechaza."""
+    for name, svc in compose["services"].items():
+        if "environment" in svc:
+            assert isinstance(svc["environment"], (dict, list)), name
+
+
+def test_v3_db_tests_resolve_the_sealed_contract() -> None:
+    """La ruta del contrato v3 debe existir desde el propio conftest de Testcontainers."""
+    conftest = Path(__file__).resolve().parent / "v3" / "db" / "conftest.py"
+    root = conftest.resolve().parents[5]
+    assert (root / "contracts" / "v3" / "db-contract.sql").is_file()

@@ -14,7 +14,7 @@ from typing import Any, Iterator
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[5]  # apps/backend/tests/v3/db -> raíz del repo
 CONTRACT = ROOT / "contracts" / "v3" / "db-contract.sql"
 
 
