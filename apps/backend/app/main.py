@@ -33,6 +33,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.deps import close_graph_driver
 from app.api.router import api_router
 from app.core.audit import AuditMiddleware
+from app.core.metrics import PrometheusMiddleware, metrics_app
 from app.core.errors import (
     CODE_CONFLICT,
     CODE_SERVICE_UNAVAILABLE,
@@ -50,6 +51,8 @@ API_DESCRIPTION = (
     "Contrato SELLADO v2.2.0 derivado de SPEC-03, SPEC-04 y SPEC-06."
 )
 API_PREFIX = "/api/v1"
+#: Fuera de ``/api/v1``: solo accesible por la red interna (Prometheus).
+METRICS_PATH = "/metrics"
 
 #: ``NodeLockedError`` del Agente 1 (inmutabilidad analítica, Constitución
 #: Regla 2). ``app.db.repository`` es stdlib-only al importar, pero se resuelve
@@ -97,6 +100,10 @@ def create_app() -> FastAPI:
 
     # --- Bitácora de auditoría + X-Request-ID (SPEC-06 §1) ----------
     application.add_middleware(AuditMiddleware, prefix=API_PREFIX)
+
+    # --- Métricas Prometheus (red interna; Nginx no enruta /metrics) -
+    application.add_middleware(PrometheusMiddleware)
+    application.mount(METRICS_PATH, metrics_app())
 
     # --- Errores con el sobre del contrato -------------------------
     @application.exception_handler(StarletteHTTPException)

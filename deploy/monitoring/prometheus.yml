@@ -1,0 +1,16 @@
+# =====================================================================
+# prometheus.yml — extracción de métricas del backend (PLAN.md Hito 6)
+#
+# Solo se alcanza por internal_intel_net (sin salida a Internet ni puertos
+# publicados). /metrics NO está enrutado por Nginx, así que no es visible
+# desde el exterior.
+# =====================================================================
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: osint-backend
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:8000"]

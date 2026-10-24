@@ -27,6 +27,7 @@ volumes:
   redis_data:
   reports_data:              # informes + chunks (STORAGE_RAW_DIR/STORAGE_CHUNKS_DIR)
   neo4j_backups:             # destino temporal de neo4j-admin backup (SPEC-06 §3)
+  prometheus_data:           # series temporales (perfil monitoring)
 
 services:
   nginx:
@@ -205,3 +206,20 @@ services:
       - ../contracts/graph-constraints.cypher:/constraints/graph-constraints.cypher:ro
     restart: unless-stopped
     # PROHIBIDO añadir "ports:" aquí (Regla 4). Editar solo desde backend.
+
+  # --- Prometheus (PLAN.md Hito 6) — opcional: ``--profile monitoring`` ---
+  # Extrae /metrics del backend por la red interna. Sin ``ports:``: los
+  # paneles se consultan desde el host con un túnel SSH, nunca publicados.
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: [monitoring]
+    logging: *default-logging
+    networks: [internal_intel_net]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on: [backend]
+    restart: unless-stopped

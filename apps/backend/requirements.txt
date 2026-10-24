@@ -41,6 +41,9 @@ pypdf>=5
 #: El código degrada a un validador mínimo propio si no está instalado.
 jsonschema>=4,<5
 
+# --- Métricas (SPEC-06 §1 · PLAN.md Hito 6): /metrics solo en red interna ---
+prometheus-client>=0.20
+
 # --- Cola / caché (SPEC-02 §5: Celery + Redis; red interna, sin puertos) ---
 redis>=5
 #: Worker de ingesta (SPEC-02 §5). Dependencia declarada por spec; la tarea
