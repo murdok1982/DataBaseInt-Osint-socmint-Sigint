@@ -33,3 +33,8 @@ Thumbs.db
 # --- OpenCode ---
 # Mantener .opencode/agents (gobernanza). Ignorar estado local si aparece.
 .opencode/state/
+
+# Cobertura y artefactos de prueba (backend)
+.coverage
+htmlcov/
+coverage.xml

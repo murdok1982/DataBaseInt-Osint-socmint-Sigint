@@ -1,0 +1,22 @@
+# Ganchos de pre-commit (PLAN.md Hito 0, tarea 7). Instalación una vez:
+#   pip install pre-commit && pre-commit install
+# Revisión manual de todo el repositorio: pre-commit run --all-files
+#
+# Bloquean el commit si detectan secretos (constitución: cero secretos en el
+# repositorio; .env nunca se versiona) o ficheros mal formados.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+      - id: check-json
+        exclude: ^apps/frontend/package-lock\.json$

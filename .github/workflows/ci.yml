@@ -1,0 +1,156 @@
+# =====================================================================
+# ci.yml — Integración continua de OSINT Nexus (PLAN.md Hito 0, T-H0-01..05)
+#
+# Un job por componente. Cualquier fallo bloquea el PR:
+#   contracts   contratos sellados (JSON Schema, OpenAPI, grafo) + auditoría SDD
+#   backend     pytest + cobertura mínima del 80 % (constitución, Calidad)
+#   informant   pytest del agente M2M
+#   frontend    tsc + lint + Vitest (cobertura) + build + Playwright e2e
+#   compose     docker compose config + build de las imágenes de producción
+#   security    gitleaks (sin secretos en el historial) + auditoría de dependencias
+# =====================================================================
+name: ci
+
+on:
+  push:
+    branches: [main, "v3.0-dev"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: Contratos sellados y auditoría SDD
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Auditoría de trazabilidad SDD (12 comprobaciones)
+        run: python scripts/audit_sdd.py
+      - name: Validación de contratos (JSON Schema, OpenAPI, grafo)
+        run: bash scripts/validate-contracts.sh
+
+  backend:
+    name: Backend (pytest + cobertura ≥ 80 %)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/backend/requirements*.txt
+      - name: Dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: "Tests con cobertura (incluye Testcontainers; Docker está disponible)"
+        run: python -m pytest -q --cov=app --cov-report=term-missing --cov-fail-under=80
+
+  informant:
+    name: Informante IA (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/informant-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/informant-agent/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+
+  frontend:
+    name: Frontend (tsc, lint, Vitest, build, Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+      - run: npm ci
+      - name: Tipos y lint
+        run: |
+          npx tsc --noEmit
+          npm run lint
+      - name: Pruebas unitarias con cobertura ≥ 80 %
+        run: npm run test:coverage
+      - name: Build de producción
+        run: npm run build
+      - name: Navegador para e2e
+        run: npx playwright install --with-deps chromium
+      - name: Pruebas e2e (Playwright)
+        run: npm run test:e2e
+        env:
+          CI: "true"
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/frontend/playwright-report/
+          retention-days: 7
+
+  compose:
+    name: Compose y build de imágenes de producción
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Entorno de ejemplo (el .env real nunca se versiona)
+        run: cp deploy/.env.example deploy/.env
+      - name: Validar la composición
+        run: docker compose -f deploy/docker-compose.prod.yml config --quiet
+      - name: Construir imágenes (backend, worker, frontend, informant-agent)
+        run: docker compose -f deploy/docker-compose.prod.yml build
+
+  security:
+    name: Secretos y dependencias
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks (historial completo)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Auditoría pip (falla con cualquier vulnerabilidad conocida)"
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit -r apps/backend/requirements.txt -r apps/informant-agent/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Auditoría npm (falla con alta o crítica)
+        working-directory: apps/frontend
+        run: npm audit --omit=dev --audit-level=high
