@@ -7,7 +7,7 @@
 [![Metodología](https://img.shields.io/badge/metodolog%C3%ADa-SDD%20v3.1-1f6feb?style=flat-square)](SPEC.md)
 [![Contratos](https://img.shields.io/badge/contratos-v3.1.0%20provisional-0e7490?style=flat-square)](contracts/SEAL.md)
 [![Auditoría](https://img.shields.io/badge/auditor%C3%ADa%20SDD-15%2F15-16a34a?style=flat-square)](.antigravity/audit/2026-10-26-sdd-v3.1.md)
-[![Backend](https://img.shields.io/badge/backend-466%20tests-16a34a?style=flat-square)](apps/backend)
+[![Backend](https://img.shields.io/badge/backend-478%20tests-16a34a?style=flat-square)](apps/backend)
 [![Informant](https://img.shields.io/badge/informant--agent-36%20tests-16a34a?style=flat-square)](apps/informant-agent)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.136.1-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -31,9 +31,11 @@
 > **v3.1 en desarrollo — multi-INT, custodia y aprobación.** Las specs
 > `SPEC-01`…`SPEC-04` fueron aprobadas el 2026-10-26. La API v3.1 añade
 > subgrafo multi-capa, colocalización SIGINT/SOCMINT, señales de alias,
-> inspector de evidencia y bandeja de propuestas. **Neo4j sigue siendo el
-> backend por defecto** hasta que la migración pase Testcontainers y el
-> sello v3.1 deje de ser provisional. Ver [`specs/TASKS.md`](specs/TASKS.md).
+> inspector de evidencia y bandeja de propuestas. La migración v3.0 → v3.1 y
+> las políticas RLS/PostGIS se validaron manualmente en Docker el 2026-10-26;
+> falta automatizarlas con Testcontainers para promover el sello. **Neo4j sigue
+> siendo el backend por defecto** hasta completar el dual-write. Ver
+> [`specs/TASKS.md`](specs/TASKS.md).
 
 ## Índice
 
@@ -416,11 +418,20 @@ La guía completa, paso a paso, está en **[`deploy/README.md`](deploy/README.md
 ```bash
 # 1) Configurar secretos
 cp deploy/.env.example deploy/.env
-#    editar: PUBLIC_HOSTNAME, NEO4J_PASSWORD, JWT_SECRET_KEY, PREFLIGHT_SECRET...
+#    editar: PUBLIC_HOSTNAME, NEO4J_PASSWORD, JWT_SECRET_KEY, PREFLIGHT_SECRET,
+#            POSTGRES_PASSWORD, API_DB_PASSWORD y POSTGRES_V31_DSN
 
 # 2) Construir y levantar
 docker compose -f deploy/docker-compose.prod.yml build
 docker compose -f deploy/docker-compose.prod.yml up -d
+
+# En un volumen PostgreSQL nuevo, el entrypoint aplica en orden:
+#   10-db-contract-v3.sql  -> esquema v3.0
+#   20-db-contract-v3.1.sql -> migración aditiva v3.1
+#   30-api-role.sh        -> contraseña del rol api_reader (RLS)
+# Sobre una base v3.0 existente, aplicar SOLO el 20-*.sql:
+#   psql "$POSTGRES_DSN" -v ON_ERROR_STOP=1 \
+#     -f contracts/v3/db-contract-v3.1.sql
 
 # 3) Aplicar constraints del grafo (idempotente)
 bash deploy/scripts/apply-constraints.sh
@@ -441,6 +452,7 @@ bash deploy/scripts/smoke-test.sh
 | `worker` | `public_net` + `internal_intel_net` | — | Celery (egreso LLM) |
 | `informant-agent` | `internal_intel_net` | — | Recolección M2M |
 | `neo4j` | `internal_intel_net` | — | Grafo (jamás expuesto) |
+| `postgres` | `internal_intel_net` | — | Custodia multi-INT, PostGIS/pgvector y RLS |
 | `redis` | `internal_intel_net` | — | Broker y estado |
 
 Comprobación de la regla de aislamiento:
@@ -545,7 +557,8 @@ npm run build
 | :--- | :--- |
 | Contratos vs `SEAL.md` | **6/6 hashes OK + migración sincronizada** |
 | Auditoría SDD | **15/15** |
-| Backend | **466 passed**, 15 skipped en local sin Docker (Testcontainers corre en CI) |
+| PostgreSQL/PostGIS v3.1 | Migración v3.0→v3.1, RLS y repositorio verificados en Docker (2026-10-26) |
+| Backend | **478 passed**, 3 skipped con Docker activo; 15 skipped sin daemon (Testcontainers corre en CI) |
 | Informant Agent | **36 passed** |
 | Frontend tests | **76 passed** |
 | Frontend build | `tsc` ✓ · `lint` ✓ · `build` ✓ |
@@ -569,7 +582,7 @@ RBAC.
 - [x] **Fase 4** — Auditoría SDD (12/12) y E2E del ciclo simbiótico.
 - [x] **v2.1** — Listados `GET /analyses` y `GET /analyses/{id}/requirements`.
 - [x] **v2.2** — 2FA TOTP, JWT 15 min, `429`, auditoría y operación.
-- [~] **v3.1** — 9 rutas multi-INT/evidencia/propuestas, DDL PostGIS, harness Hermes y UI; sello provisional hasta Testcontainers.
+- [~] **v3.1** — 9 rutas multi-INT/evidencia/propuestas, DDL PostGIS, harness Hermes y UI; migración y RLS verificadas en Docker, sello provisional hasta Testcontainers y dual-write.
 - [ ] **Despliegue real en VPS** — pendiente de un entorno con daemon Docker.
 - [ ] **Smoke test con servicios vivos** (Neo4j/Redis/Celery/LLM real).
 

@@ -32,6 +32,25 @@ PREAMBLE = """-- OSINT Nexus v3.1 — esquema multi-INT, custodia y cuarentena.
 
 BEGIN;
 
+-- La base v3.0 ya crea parte de estos roles. Se aseguran antes del bloque
+-- normativo para que una instalación nueva y una migración real sean
+-- idempotentes: el bloque del spec usa un único EXCEPTION que, si el primer
+-- rol ya existe, impediría crear los demás.
+DO $$
+DECLARE
+    role_name text;
+BEGIN
+    FOREACH role_name IN ARRAY ARRAY[
+        'svc_hermes', 'svc_aracne', 'svc_argos', 'svc_atenea',
+        'svc_director_cell', 'api_reader'
+    ] LOOP
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role_name) THEN
+            EXECUTE format('CREATE ROLE %I LOGIN', role_name);
+        END IF;
+    END LOOP;
+END
+$$;
+
 DO $$
 BEGIN
     IF to_regclass('staging.raw_intel_ledger') IS NOT NULL
@@ -61,6 +80,30 @@ BEGIN
     IF to_regclass('intel.evidence_links') IS NOT NULL
        AND to_regclass('intel.legacy_evidence_links') IS NULL THEN
         ALTER TABLE intel.evidence_links RENAME TO legacy_evidence_links;
+    END IF;
+END
+$$;
+
+-- Al renombrar una tabla, PostgreSQL conserva los nombres de sus índices y
+-- constraints. La capa v3.1 reutiliza dos nombres canónicos de v3.0; se
+-- renombran en la tabla legacy para evitar colisiones en una migración real.
+DO $$
+BEGIN
+    IF to_regclass('intel.legacy_evidence_links') IS NOT NULL THEN
+        IF to_regclass('intel.idx_evidence_links_evidence') IS NOT NULL THEN
+            ALTER INDEX intel.idx_evidence_links_evidence
+                RENAME TO legacy_idx_evidence_links_evidence;
+        END IF;
+        IF EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'evidence_links_one_target_chk'
+              AND conrelid = 'intel.legacy_evidence_links'::regclass
+        ) THEN
+            ALTER TABLE intel.legacy_evidence_links
+                RENAME CONSTRAINT evidence_links_one_target_chk
+                TO legacy_evidence_links_one_target_chk;
+        END IF;
     END IF;
 END
 $$;
@@ -105,8 +148,8 @@ FROM intel.intelligence_relationships;
 
 CREATE VIEW staging.raw_intel_attachments
 WITH (security_invoker = true) AS
-SELECT attachment_id, evidence_id, mime_type, byte_size, sha256,
-       storage_uri, created_at
+SELECT attachment_id, evidence_id, filename, mime_type, size_bytes, sha256,
+       storage_uri, created_at, metadata
 FROM staging.raw_evidence_attachments;
 
 -- La API humana no recibe UPDATE directo: decide por función SECURITY DEFINER.
@@ -120,6 +163,13 @@ FOR SELECT USING (
 
 GRANT SELECT ON staging.agent_proposals, staging.raw_evidence_vault,
     staging.raw_evidence_attachments TO api_reader;
+
+-- Las políticas RLS invocan intel.tlp_rank(text) como el rol consultante.
+-- El DDL v3.0 revocó EXECUTE de PUBLIC, así que cada rol de servicio necesita
+-- el grant explícito o toda lectura TLP falla con "permission denied".
+GRANT EXECUTE ON FUNCTION intel.tlp_rank(text)
+    TO api_reader, svc_director_cell, svc_atenea,
+       svc_hermes, svc_aracne, svc_argos;
 
 CREATE OR REPLACE FUNCTION staging.fn_decide_proposal(
     p_proposal_id uuid,
@@ -233,6 +283,15 @@ def main() -> None:
     schema = "\n\n".join(blocks)
     if "CREATE TABLE staging.agent_proposals (" not in schema:
         raise SystemExit("No se encontró agent_proposals en el spec")
+
+    # Las políticas RLS del spec pasan columnas enum directamente a
+    # ``intel.tlp_rank(text)``. PostgreSQL no aplica la conversión implícita
+    # enum -> text en el despacho de funciones, así que se fija el cast.
+    schema = re.sub(
+        r"intel\.tlp_rank\(((?:[A-Za-z_][A-Za-z0-9_]*\.)?tlp_classification)\)",
+        r"intel.tlp_rank(\1::text)",
+        schema,
+    )
 
     # Bloqueo optimista exigido por SPEC-02 §11.5; el DDL original no lo tenía.
     schema = schema.replace(

@@ -234,11 +234,16 @@ def get_v31_pool() -> Any:
             verify_connectivity,
         )
 
-        if not get_dsn():
+        # El backend v3.1 debe usar el rol de mínimo privilegio ``api_reader``
+        # (RLS activo), no el owner que bypasea las políticas. ``POSTGRES_DSN``
+        # se conserva como fallback para entornos locales y compatibilidad.
+        dsn = os.environ.get("POSTGRES_V31_DSN", "").strip() or get_dsn()
+        if not dsn:
             raise ServiceUnavailable(
-                "POSTGRES_DSN no configurado; las consultas v3.1 no están disponibles."
+                "POSTGRES_V31_DSN/POSTGRES_DSN no configurado; "
+                "las consultas v3.1 no están disponibles."
             )
-        pool = create_pool()
+        pool = create_pool(dsn)
         verify_connectivity(pool)
         return pool
     except ServiceUnavailable:

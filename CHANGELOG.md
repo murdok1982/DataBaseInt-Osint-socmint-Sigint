@@ -23,8 +23,13 @@ precedida de su spec y sellada en `contracts/SEAL.md`.
   de evidencia y bandeja de aprobación con bloqueo por cadena inválida.
 - **Migración reproducible**: `scripts/migrate/generate_v31_schema.py` genera
   `migrations/v3.1/0001_schema.sql`; `pglast` valida sintaxis y el contrato.
-- **Pruebas**: backend `466 passed, 15 skipped`; Hermes `10 passed`; frontend
-  `76 passed`; auditoría SDD `15/15`.
+- **Pruebas**: backend `478 passed, 3 skipped` con Docker; Hermes `10 passed`;
+  frontend `76 passed`; auditoría SDD `15/15`.
+- **Verificación PostgreSQL real** (2026-10-26): migración v3.0 → v3.1,
+  PostGIS/pgvector, RLS con `api_reader`, cadena de evidencia y repositorio
+  v3.1 probados en Docker. Se corrigieron colisiones de índices/constraints,
+  casts de enums, grants de `tlp_rank`, la vista de adjuntos y un `ANY` de
+  subgrafo que fallaba sólo en PostgreSQL real.
 
 ### Añadido
 - **Copia de seguridad de PostgreSQL** (`deploy/scripts/backup.sh`): volcado

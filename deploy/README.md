@@ -9,6 +9,9 @@ deploy/
 ├── docker-compose.prod.yml        # stack de producción (2 redes, 1 solo ports:)
 ├── .env.example                   # plantilla de secretos (copiar a .env)
 ├── informant-agent.Dockerfile     # imagen del Informante IA (M2M)
+├── postgres/
+│   ├── Dockerfile                 # PostgreSQL 16 + PostGIS + pgvector
+│   └── init/30-api-role.sh        # contraseña de api_reader (RLS)
 ├── nginx/
 │   ├── nginx.conf                 # proxy inverso TLS 1.3 (único punto de entrada)
 │   ├── certs/                     # fullchain.pem + privkey.pem (no versionado)
@@ -36,9 +39,10 @@ deploy/
 | `worker` | build `apps/backend` (misma imagen) | `public_net` + `internal_intel_net` | — | Celery: `osint.workers.ingest_report` (egreso LLM) |
 | `informant-agent` | `deploy/informant-agent.Dockerfile` | `internal_intel_net` | — | Job M2M por lotes |
 | `neo4j` | `neo4j:5-enterprise` | `internal_intel_net` | — | Grafo (jamás expuesto) |
+| `postgres` | build `deploy/postgres` (PostGIS + pgvector) | `internal_intel_net` | — | Custodia multi-INT, RLS y propuestas v3.1 |
 | `redis` | `redis:7-alpine` | `internal_intel_net` | — | Estado de jobs + broker Celery |
 
-**Regla 4 (Constitución):** Neo4j y Redis **nunca** publican `ports:`. En este
+**Regla 4 (Constitución):** Neo4j, PostgreSQL y Redis **nunca** publican `ports:`. En este
 compose existe **exactamente un `ports:`** (Nginx). Puedes comprobarlo:
 
 ```bash
@@ -117,6 +121,8 @@ import secrets
 print("JWT_SECRET_KEY=" + secrets.token_urlsafe(64))
 print("PREFLIGHT_SECRET=" + secrets.token_urlsafe(48))
 print("NEO4J_PASSWORD=" + secrets.token_urlsafe(32))
+print("POSTGRES_PASSWORD=" + secrets.token_urlsafe(32))
+print("API_DB_PASSWORD=" + secrets.token_urlsafe(32))
 print("INFORMANT_API_KEY=" + secrets.token_urlsafe(32))   # provisional; ver paso 9
 PY
 ```
@@ -129,11 +135,20 @@ Edita `deploy/.env` y completa al menos:
 | `ENVIRONMENT` | `production` (exige `JWT_SECRET_KEY`). |
 | `JWT_SECRET_KEY`, `PREFLIGHT_SECRET` | Del generador anterior. |
 | `NEO4J_PASSWORD`, `NEO4J_ACCEPT_LICENSE_AGREEMENT=yes` | Ver §Neo4j. |
+| `POSTGRES_PASSWORD` | Contraseña del owner; sólo administración/migraciones. |
+| `API_DB_PASSWORD` | Contraseña de `api_reader`, el rol con RLS que usa la API v3.1. |
+| `POSTGRES_V31_DSN` | `postgresql://api_reader:<API_DB_PASSWORD>@postgres:5432/osint`. |
 | `INFORMANT_API_KEY` | Clave M2M en claro (paso 9). |
 | `CELERY_BROKER_URL`, `WORKER_CONCURRENCY` | Worker Celery (SPEC-02 §5). |
 | `STORAGE_RAW_DIR=/storage/raw_reports`, `STORAGE_CHUNKS_DIR=/storage/processed_chunks` | Coinciden con el volumen `reports_data:/storage`. |
 
 > `deploy/.env` está en `.gitignore` (`.env`): **jamás** se versiona.
+
+En un volumen PostgreSQL **nuevo**, el entrypoint ejecuta en orden
+`10-db-contract-v3.sql`, `20-db-contract-v3.1.sql` y `30-api-role.sh`. La
+migración v3.1 es aditiva y presupone el esquema v3.0. Sobre una base v3.0 ya
+existente, aplica sólo `contracts/v3/db-contract-v3.1.sql` con `psql
+-v ON_ERROR_STOP=1`; no vuelvas a ejecutar el script v3.0.
 
 ---
 

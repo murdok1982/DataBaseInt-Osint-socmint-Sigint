@@ -174,12 +174,17 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-osint_owner}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env}
       # El contrato crea los roles svc_* sin contraseña; el owner solo administra.
+      # api_reader es el rol de mínimo privilegio que usa el backend v3.1.
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?define API_DB_PASSWORD en .env}
       POSTGRES_INITDB_ARGS: "--data-checksums"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Sólo se ejecuta en un volumen nuevo. Para migrar una base v3.0
-      # existente, aplicar db-contract-v3.1.sql manualmente (ver README).
-      - ../contracts/v3/db-contract-v3.1.sql:/docker-entrypoint-initdb.d/10-db-contract.sql:ro
+      # Sólo se ejecuta en un volumen nuevo: primero la base v3.0 y después
+      # la migración v3.1 (que renombra tablas y crea la capa multi-INT).
+      # Para una base v3.0 existente, aplicar sólo el 20-*.sql manualmente.
+      - ../contracts/v3/db-contract.sql:/docker-entrypoint-initdb.d/10-db-contract-v3.sql:ro
+      - ../contracts/v3/db-contract-v3.1.sql:/docker-entrypoint-initdb.d/20-db-contract-v3.1.sql:ro
+      - ./postgres/init/30-api-role.sh:/docker-entrypoint-initdb.d/30-api-role.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-osint_owner} -d ${POSTGRES_DB:-osint}"]
       interval: 10s

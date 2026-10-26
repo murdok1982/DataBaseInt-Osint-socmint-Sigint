@@ -9,15 +9,18 @@
 **Sellado por:** Agente 0 (Director de Arquitectura / Orquestador SDD)
 **Autorizado por:** aprobación humana de `SPEC-01`…`SPEC-04` v3.1 (2026-10-26)
 **Evidencia de validación:** `bash scripts/validate-contracts.sh` → `ExitCode=0`
-(5/5 checks). **Limitación declarada:** este entorno no tiene Docker; el DDL no
-se ha aplicado aún a PostgreSQL 16 + PostGIS 3.4 + pgvector. El sello queda
-provisional hasta que pasen `apps/backend/tests/v3/db/` con Testcontainers.
+(5/5 checks); `python scripts/audit_sdd.py` → 15/15. **Verificación manual
+Docker (2026-10-26):** migración v3.0 → v3.1 aplicada con `ON_ERROR_STOP`,
+PostGIS 3.6.4 + pgvector 0.8.7, RLS por `api_reader` y repositorio v3.1
+probados contra PostgreSQL 16. El sello sigue provisional hasta que
+`apps/backend/tests/v3/db/` incluya la migración v3.1 en Testcontainers/CI y
+se ejecute `EXPLAIN` de las consultas nuevas.
 
 | Contrato | Versión | SHA-256 |
 | :--- | :--- | :--- |
 | `openapi.yaml` | **v3.1.0** | `f16fbe714c7bbd4ae1a643654956a585f00bbb38c0ed0335190513c248920307` |
 | `v3/hermes-tools.json` | **v3.1.0** | `7b93ff8f58832b951aea187d4d8afde962fc9e91b5af41c9db5fad39bbed9f78` |
-| `v3/db-contract-v3.1.sql` | **v3.1.0** | `1c93f1fcf20ab51808825ddfd4997ab8268e94372a4b241888223a635fca4914` |
+| `v3/db-contract-v3.1.sql` | **v3.1.0** | `29547ef6abb57d642d14edb758db9953997eaa99ca05a77c7b60e7fbae4071cb` |
 | `v3/agent-contracts.json` | v3.0.0 (sin cambios) | `6b10056d7c88feff77a03ebf7d1ed2a673ecfaeca6bdbb8f577c1ba93f87d90f` |
 | `graph-constraints.cypher` | v2.1.0 (sin cambios) | `43ecd30a0529fdfcdfc2bd37b2b378688e53cac51c549c74194a310b04b57363` |
 | `extraction-schema.json` | v2.0.0 (sin cambios) | `7f66c7d866b29bfdab2c762a09b2642f7055716a872c8717a8fc52203050e7f8` |

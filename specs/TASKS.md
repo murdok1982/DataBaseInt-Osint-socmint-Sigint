@@ -16,8 +16,8 @@
 | Bloque | Tareas | Estado | Evidencia / límite |
 |---|---|---|---|
 | Contratos y sello | TASK-03, TASK-17, TASK-33 | Hecho (sello provisional) | `bash scripts/validate-contracts.sh` 5/5; `python scripts/audit_sdd.py` 15/15; 38 `operationId` |
-| Esquema y custodia | TASK-05…TASK-10, TASK-12, TASK-13 | Implementado en DDL + servicios | `pglast` parse OK; tests de servicios v3.1; falta aplicar a PostgreSQL real |
-| Migración y RLS runtime | TASK-02, TASK-04, TASK-14, TASK-15 | Bloqueado | No hay Docker/daemon en este entorno; Testcontainers sigue en `skip` |
+| Esquema y custodia | TASK-05…TASK-10, TASK-12, TASK-13 | Implementado y verificado en PostgreSQL 16 | Migración v3.0→v3.1, cadena de evidencia, PostGIS/pgvector y repositorio probados en Docker; falta `EXPLAIN` |
+| Migración y RLS runtime | TASK-02, TASK-04, TASK-14, TASK-15 | Verificado manualmente | Migración y RLS con `api_reader` OK en Docker; Testcontainers/CI sigue pendiente |
 | Harness Hermes | TASK-16…TASK-20, TASK-22 | Hecho | `apps/agents/hermes/tests` 10 passed; gateway con allowlist, idempotencia y OPSEC fail-closed |
 | Correlación y API | TASK-27, TASK-29, TASK-31, TASK-34 | Hecho | 16 tests de servicios + 14 tests HTTP v3.1; RBAC/TLP/máscara |
 | UI interactiva | TASK-35…TASK-39 | Hecho parcial | Cliente tipado, subgrafo, mapa MapLibre, timeline, inspector y bandeja; 76 tests frontend; faltan E2E y páginas dedicadas `/missions` y `/events/:id` |
@@ -553,13 +553,14 @@ Una tarea sólo se marca `[x]` si:
 | Fase | Estado |
 |---|---|
 | 0 — Aprobación | **APROBADA** por el usuario el 2026-10-26 |
-| 1 — Datos | Implementado en DDL/servicios; **runtime bloqueado** sin Docker |
+| 1 — Datos | Implementado y verificado en PostgreSQL/PostGIS real (Docker); Testcontainers pendiente |
 | 2 — Hermes | **Hecho**; 10 tests; gateway con OPSEC fail-closed |
 | 3 — Correlación | **Hecho**; servicios y rutas con TLP/RBAC |
 | 4 — UI | **Parcial**; 6 vistas, 76 tests; faltan E2E y accesibilidad |
 | 5 — Dual-write | **Pendiente**; Neo4j sigue siendo el backend operativo |
-| 6 — Cierre | **Provisional**; sello pendiente de Testcontainers |
+| 6 — Cierre | **Provisional**; migración validada, sello pendiente de Testcontainers/CI y dual-write |
 
-**Próxima acción:** ejecutar la migración v3.1 y las pruebas de RLS/PostGIS en
-un entorno con Docker; sólo entonces promover el sello provisional y cerrar el
-hito. La tabla `0.0` de este documento es la referencia de estado vigente.
+**Próxima acción:** automatizar la migración v3.1 y las pruebas de RLS/PostGIS
+en Testcontainers/CI, ejecutar `EXPLAIN` y completar el dual-write antes de
+promover el sello. La tabla `0.0` de este documento es la referencia de estado
+vigente.

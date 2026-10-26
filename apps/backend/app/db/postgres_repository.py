@@ -330,7 +330,7 @@ class PostgresRepository:
             rows = conn.execute(
                 """
                 SELECT * FROM api.v_graph_nodes
-                WHERE (%s IS NULL OR label = %s)
+                WHERE (%s::text IS NULL OR label = %s::text)
                 ORDER BY name
                 LIMIT %s OFFSET %s
                 """,

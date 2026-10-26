@@ -244,7 +244,7 @@ class PostgresV31Repository:
                   AND (e.valid_until IS NULL OR e.valid_until > (SELECT as_of FROM params))
                   AND e.confidence_score >= (SELECT min_confidence FROM params)
                   AND (cardinality((SELECT disciplines FROM params)) = 0
-                       OR e.discipline::text = ANY((SELECT disciplines FROM params)))
+                       OR e.discipline::text = ANY((SELECT disciplines FROM params)::text[]))
                   AND intel.tlp_rank(e.tlp_classification::text)
                       <= intel.tlp_rank((SELECT clearance FROM params))
                   AND NOT (CASE WHEN e.source_entity_id = w.entity_id
