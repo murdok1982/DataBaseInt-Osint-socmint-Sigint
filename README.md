@@ -7,11 +7,11 @@
 [![Metodología](https://img.shields.io/badge/metodolog%C3%ADa-SDD%20v3.0-1f6feb?style=flat-square)](SPEC.md)
 [![Contratos](https://img.shields.io/badge/contratos-sellados%20v2.2.0-0e7490?style=flat-square)](contracts/SEAL.md)
 [![Auditoría](https://img.shields.io/badge/auditor%C3%ADa%20SDD-12%2F12-16a34a?style=flat-square)](.antigravity/audit/2026-10-17-sdd-v2.0.md)
-[![Backend](https://img.shields.io/badge/backend-391%20tests-16a34a?style=flat-square)](apps/backend)
+[![Backend](https://img.shields.io/badge/backend-436%20tests-16a34a?style=flat-square)](apps/backend)
 [![Informant](https://img.shields.io/badge/informant--agent-36%20tests-16a34a?style=flat-square)](apps/informant-agent)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.5.28-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![Neo4j](https://img.shields.io/badge/Neo4j-5-4581C3?style=flat-square&logo=neo4j&logoColor=white)](https://neo4j.com/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](deploy/docker-compose.prod.yml)
 
@@ -505,7 +505,7 @@ npm run build
 | :--- | :--- |
 | Contratos vs `SEAL.md` | **3/3 hashes OK** |
 | Auditoría SDD | **12/12** |
-| Backend | **391 passed**, 12 skipped en local sin Docker (Testcontainers corre en CI) |
+| Backend | **436 passed**, 15 skipped en local sin Docker (Testcontainers corre en CI) |
 | Informant Agent | **36 passed** |
 | Frontend | `tsc` ✓ · `lint` ✓ · `build` ✓ |
 | Docker Compose | `config` ✓ · **1** solo `ports:` |

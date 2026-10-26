@@ -1389,14 +1389,14 @@ npm run build
 | Contratos vs `SEAL.md` | 3/3 hashes OK |
 | Validación de contratos | 3/3 válidos; 9 warnings no bloqueantes |
 | Auditoría SDD | 12/12 |
-| Backend | 391 passed, 12 skipped (sin Docker) |
+| Backend | 436 passed, 15 skipped (sin Docker; ejecución local con Python 3.14.6) |
 | Informante | 36 passed |
 | Frontend | `tsc` ✓, `lint` ✓, `build` ✓ |
 | Docker Compose | `config` ✓, 1 solo `ports:` |
-| Tests v3 | 12 skipped por falta de Docker/Testcontainers |
+| Tests v3 | 12 skipped por falta de Docker/Testcontainers (del total de 15) |
 | SQL/JSON/YAML | Parseo y `py_compile` OK |
 
-Los 14 skipped incluyen los 12 tests v3. **Un skip no cierra el Hito 1**: la
+Los 15 skipped incluyen los 12 tests v3. **Un skip no cierra el Hito 1**: la
 aceptación exige ejecutarlos en CI con Docker.
 
 ### 12.3 Tests de aceptación v3
