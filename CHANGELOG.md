@@ -6,6 +6,26 @@ precedida de su spec y sellada en `contracts/SEAL.md`.
 
 ## [Sin publicar]
 
+### v3.1.0 — multi-INT, custodia y aprobación (2026-10-26)
+- **Contrato v3.1.0 (provisional)**: `openapi.yaml` con 38 `operationId`;
+  `v3/hermes-tools.json` con cinco tools; `v3/db-contract-v3.1.sql` con capas
+  `core_entities`, `observables`, `observability_events`, `raw_evidence_vault`,
+  `agent_proposals`, PostGIS/pgvector, RLS/TLP y vistas de compatibilidad v3.0.
+- **Nuevas rutas**: `POST /graph/subgraph`, `POST /correlation/colocation`,
+  `POST /analytics/alias-evasion`, `GET /proposals`, `GET /proposals/{id}`,
+  `POST /proposals/{id}/approve|reject`, `GET /evidence/{id}` y
+  `GET /evidence/{id}/verify`.
+- **Harness Hermes** (`apps/agents/hermes`): gateway con allowlist, validación
+  Pydantic, idempotencia, OPSEC fail-closed y auditoría; backend inyectado, sin
+  credenciales ni imports de `app.*`.
+- **Frontend**: cliente tipado para las 9 operaciones, subgrafo circular,
+  mapa MapLibre sin tiles externos por defecto, timeline de eventos, inspector
+  de evidencia y bandeja de aprobación con bloqueo por cadena inválida.
+- **Migración reproducible**: `scripts/migrate/generate_v31_schema.py` genera
+  `migrations/v3.1/0001_schema.sql`; `pglast` valida sintaxis y el contrato.
+- **Pruebas**: backend `466 passed, 15 skipped`; Hermes `10 passed`; frontend
+  `76 passed`; auditoría SDD `15/15`.
+
 ### Añadido
 - **Copia de seguridad de PostgreSQL** (`deploy/scripts/backup.sh`): volcado
   `pg_dump -Fc` cifrado (`postgres.dump.gpg`) incluido en `SHA256SUMS`.

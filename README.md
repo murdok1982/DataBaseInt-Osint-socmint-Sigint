@@ -4,13 +4,13 @@
 
 **Plataforma de inteligencia de fuentes abiertas con grafo de conocimiento, ingesta NLP y coherencia Humano–IA.**
 
-[![Metodología](https://img.shields.io/badge/metodolog%C3%ADa-SDD%20v3.0-1f6feb?style=flat-square)](SPEC.md)
-[![Contratos](https://img.shields.io/badge/contratos-sellados%20v2.2.0-0e7490?style=flat-square)](contracts/SEAL.md)
-[![Auditoría](https://img.shields.io/badge/auditor%C3%ADa%20SDD-12%2F12-16a34a?style=flat-square)](.antigravity/audit/2026-10-17-sdd-v2.0.md)
-[![Backend](https://img.shields.io/badge/backend-436%20tests-16a34a?style=flat-square)](apps/backend)
+[![Metodología](https://img.shields.io/badge/metodolog%C3%ADa-SDD%20v3.1-1f6feb?style=flat-square)](SPEC.md)
+[![Contratos](https://img.shields.io/badge/contratos-v3.1.0%20provisional-0e7490?style=flat-square)](contracts/SEAL.md)
+[![Auditoría](https://img.shields.io/badge/auditor%C3%ADa%20SDD-15%2F15-16a34a?style=flat-square)](.antigravity/audit/2026-10-26-sdd-v3.1.md)
+[![Backend](https://img.shields.io/badge/backend-466%20tests-16a34a?style=flat-square)](apps/backend)
 [![Informant](https://img.shields.io/badge/informant--agent-36%20tests-16a34a?style=flat-square)](apps/informant-agent)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.136.1-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-15.5.28-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![Neo4j](https://img.shields.io/badge/Neo4j-5-4581C3?style=flat-square&logo=neo4j&logoColor=white)](https://neo4j.com/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](deploy/docker-compose.prod.yml)
@@ -28,12 +28,12 @@
 > se re-sella. Ningún agente escribe `/apps` o `/deploy` sin una spec que lo
 > autorice.
 
-> **v3.0 en desarrollo — Hito 1.** La [`SPEC.md`](SPEC.md) v3.0.0 fue aprobada
-> el 2026-10-23. Se añade PostgreSQL 16 + `pgvector` como capa de custodia
-> (`staging.raw_intel_ledger`) y grafo validado STIX 2.1, con roles por agente y
-> RLS/TLP. **Neo4j sigue siendo el backend por defecto** (`GRAPH_BACKEND=neo4j`)
-> hasta que `contracts/v3/db-contract.sql` pase Testcontainers y se selle como
-> v3.0.0. Ver [`PLAN.md`](PLAN.md) y [`AUDIT.md`](AUDIT.md).
+> **v3.1 en desarrollo — multi-INT, custodia y aprobación.** Las specs
+> `SPEC-01`…`SPEC-04` fueron aprobadas el 2026-10-26. La API v3.1 añade
+> subgrafo multi-capa, colocalización SIGINT/SOCMINT, señales de alias,
+> inspector de evidencia y bandeja de propuestas. **Neo4j sigue siendo el
+> backend por defecto** hasta que la migración pase Testcontainers y el
+> sello v3.1 deje de ser provisional. Ver [`specs/TASKS.md`](specs/TASKS.md).
 
 ## Índice
 
@@ -108,12 +108,16 @@ las tesis humanas y eleva contradicciones en lugar de sobrescribirlas.
 - **Backups cifrados**, rotación de logs y `healthcheck` de servicios.
 - **Nginx TLS 1.3** como único punto de entrada.
 
-### Dashboard (4 vistas + apoyo)
+### Dashboard (6 vistas + apoyo)
 1. **Grafo interactivo** (Cytoscape) con filtros y expansión de vecindad.
 2. **Visor Split-View** de dossier con subrayado de evidencia sobre el PDF.
 3. **Workspace de Análisis**: tesis, conclusión, RFI y evidencias.
 4. **Bandeja de Coherencia**: alertas de contradicción y resolución.
-5. **Consola GraphRAG** y **ingesta drag & drop**.
+5. **Workspace Multi-INT** (v3.1): subgrafo por disciplina, colocalización
+   SIGINT/SOCMINT, mapa MapLibre y timeline de eventos.
+6. **Aprobaciones** (v3.1): propuestas de agentes, inspector de evidencia y
+   decisión por propuesta con bloqueo si la cadena de custodia es inválida.
+7. **Consola GraphRAG** y **ingesta drag & drop** como apoyo transversal.
 
 ---
 
@@ -137,6 +141,7 @@ flowchart LR
 
     subgraph DATOS["Datos (red interna)"]
         N4J[("Neo4j 5<br/>grafo + vectores")]
+        PG[("PostgreSQL 16<br/>PostGIS + pgvector<br/>v3.1 opcional")]
         RDS[("Redis 7<br/>broker + estado")]
         FS[("Storage<br/>informes + chunks")]
     end
@@ -147,9 +152,11 @@ flowchart LR
     IA -->|HTTPS M2M| NG
     NG --> API
     API -->|Bolt| N4J
+    API -.->|SQL/RLS v3.1| PG
     API -->|Redis| RDS
     API -->|PDF/chunks| FS
     W -->|Bolt| N4J
+    W -.->|ledger v3.1| PG
     W -->|Redis| RDS
     W -->|PDF/chunks| FS
     W -.->|LLM_PROVIDER| EXT
@@ -159,9 +166,11 @@ flowchart LR
 | Componente | Responsabilidad | Tecnología |
 | :--- | :--- | :--- |
 | `apps/backend` | API REST, RBAC, ingesta, Coherence Engine, GraphRAG | Python 3.12 · FastAPI · Pydantic v2 |
-| `apps/frontend` | Dashboard de 4 vistas y consola | Next.js 15 · TypeScript · Tailwind · Cytoscape |
+| `apps/frontend` | Dashboard de 6 vistas + consola | Next.js 15 · TypeScript · Tailwind · Cytoscape · MapLibre GL |
+| `apps/agents/hermes` | Harness de tools, OPSEC e idempotencia | Python 3.12 · Pydantic v2 |
 | `apps/informant-agent` | Recolección OSINT y extracción guiada (M2M) | Python · httpx · jsonschema |
 | `neo4j` | Grafo de conocimiento, constraints e índices | Neo4j 5 Enterprise + APOC |
+| `postgres` | Custodia multi-INT, PostGIS/pgvector y RLS (v3.1 opcional) | PostgreSQL 16 · PostGIS 3.4 · pgvector |
 | `redis` | Broker Celery y estado de jobs | Redis 7 |
 | `nginx` | Terminación TLS, proxy y único puerto publicado | Nginx 1.27 |
 | `worker` | Pipeline de ingesta asíncrono | Celery |
@@ -249,15 +258,24 @@ osint-nexus-platform/
 │   ├── 03-api-and-graphrag.spec.md
 │   ├── 04-security-and-rbac.spec.md
 │   ├── 05-dashboard-ui-ux.spec.md
-│   └── 06-operations-and-compliance.spec.md
+│   ├── 06-operations-and-compliance.spec.md
+│   ├── 00-AUDIT.md           Auditoría y registro de riesgos
+│   ├── SPEC-01-DATA-MODEL.md
+│   ├── SPEC-02-HERMES-HARNESS-INGESTION.md
+│   ├── SPEC-03-CORRELATION-ENGINE.md
+│   ├── SPEC-04-INTERACTIVE-UI-CONTRACT.md
+│   └── TASKS.md              Plan v3.1 y estado de ejecución
 ├── contracts/               Contratos ejecutables SELLADOS
 │   ├── graph-constraints.cypher
 │   ├── extraction-schema.json
 │   ├── openapi.yaml
+│   ├── v3/                  DDL v3.1, tools Hermes y contratos de agente
 │   └── SEAL.md              Registro de sellado y hashes
+├── migrations/v3.1/         DDL reproducible generado desde SPEC-01
 ├── apps/
-│   ├── backend/             API, ingesta, coherencia, GraphRAG
-│   ├── frontend/            Dashboard Next.js (4 vistas)
+│   ├── agents/hermes/       Harness Hermes (allowlist, OPSEC, idempotencia)
+│   ├── backend/             API, ingesta, coherencia, GraphRAG, multi-INT
+│   ├── frontend/            Dashboard Next.js (6 vistas)
 │   └── informant-agent/     Informante IA M2M
 ├── storage/
 │   ├── raw_reports/         Informes originales (no versionados)
@@ -285,13 +303,24 @@ osint-nexus-platform/
 | **SPEC-05** | Dashboard y experiencia de las 4 vistas |
 | **SPEC-06** | Auditoría, cumplimiento, backups y operación |
 
+Además, el paquete **v3.1 multi-INT** (aprobado el 2026-10-26) añade:
+
+| Spec | Ámbito |
+| :--- | :--- |
+| **SPEC-01 v3.1** | Modelo multi-INT, custodia, observables y propuestas |
+| **SPEC-02 v3.1** | Harness Hermes, tool calling, OPSEC e ingesta |
+| **SPEC-03 v3.1** | Correlación, subgrafo multicapa y evasión de alias |
+| **SPEC-04 v3.1** | Workspace, mapa-tiempo, inspector de evidencia y aprobaciones |
+
 ### Contratos sellados
 
 | Contrato | Deriva de | Versión |
 | :--- | :--- | :--- |
 | [`graph-constraints.cypher`](contracts/graph-constraints.cypher) | SPEC-01 | v2.1.0 |
 | [`extraction-schema.json`](contracts/extraction-schema.json) | SPEC-02 | v2.0.0 |
-| [`openapi.yaml`](contracts/openapi.yaml) | SPEC-03 + SPEC-04 | **v2.2.0** |
+| [`openapi.yaml`](contracts/openapi.yaml) | SPEC-03 + SPEC-04 | **v3.1.0** |
+| [`v3/hermes-tools.json`](contracts/v3/hermes-tools.json) | SPEC-02 | **v3.1.0** |
+| [`v3/db-contract-v3.1.sql`](contracts/v3/db-contract-v3.1.sql) | SPEC-01 | **v3.1.0 (provisional)** |
 
 El sello vigente y los hashes SHA-256 están en [`contracts/SEAL.md`](contracts/SEAL.md).
 **Cualquier cambio de contrato exige una nueva spec y un nuevo sello.**
@@ -359,7 +388,7 @@ docker exec -i osint-neo4j cypher-shell -u neo4j -p CHANGE_ME \
 ```bash
 cd apps/frontend
 npm install
-npm run gen:api        # tipos desde openapi.yaml (29 operationId)
+npm run gen:api        # tipos desde openapi.yaml (38 operationId)
 npm run dev            # http://localhost:3000
 ```
 
@@ -429,16 +458,20 @@ docker compose -f deploy/docker-compose.prod.yml config | grep -c '^ *ports:'
 - **Autenticación humana:** `Authorization: Bearer <JWT>` (15 min) + refresh en
   cookie HttpOnly/Secure.
 - **Autenticación M2M:** `X-API-Key` (principal `AI_INFORMANT`).
-- **Contrato:** [`contracts/openapi.yaml`](contracts/openapi.yaml) — **29 `operationId`**.
+- **Contrato:** [`contracts/openapi.yaml`](contracts/openapi.yaml) — **38 `operationId`**
+  (37 HTTP + 1 WebSocket).
 
 | Grupo | Métodos y rutas |
 | :--- | :--- |
 | **Auth** | `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` · `GET /auth/me` |
 | **Grafo** | `GET /graph/nodes` · `GET /graph/nodes/{id}` · `PUT /graph/nodes/{id}` · `DELETE /graph/nodes/{id}` · `POST /graph/nodes/{id}/lock` · `GET /graph/edges` · `GET /graph/neighborhood/{id}` |
+| **Multi-INT (v3.1)** | `POST /graph/subgraph` · `POST /correlation/colocation` · `POST /analytics/alias-evasion` |
 | **Coherencia** | `POST /context/preflight` · `GET /coherence/alerts` · `PATCH /coherence/alerts/{alert_id}/resolve` |
 | **Ingesta** | `POST /ingest` · `POST /ingest/informant` · `GET /ingest/{job_id}` · `WS /ingest/{job_id}/ws` |
 | **Informes** | `GET /reports/{id}` · `GET /reports/{id}/file` · `GET /reports/{id}/chunks` |
 | **Análisis** | `GET /analyses` · `POST /analyses` · `GET /analyses/{id}` · `PUT /analyses/{id}` · `POST /analyses/{id}/requirements` · `GET /analyses/{id}/requirements` |
+| **Propuestas (v3.1)** | `GET /proposals` · `GET /proposals/{id}` · `POST /proposals/{id}/approve` · `POST /proposals/{id}/reject` |
+| **Evidencia (v3.1)** | `GET /evidence/{id}` · `GET /evidence/{id}/verify` |
 | **Búsqueda** | `POST /search/rag` |
 | **Sistema** | `GET /info` |
 
@@ -451,6 +484,9 @@ docker compose -f deploy/docker-compose.prod.yml config | grep -c '^ *ports:'
 | Bloquear nodo (`locked_by_analyst`) | ✓ | ✓ | — | — |
 | Resolver alertas de coherencia | ✓ | ✓ | — | — |
 | Pre-Flight + ingesta M2M | — | — | — | ✓ |
+| Subgrafo / colocalización / alias (VIEWER+) | ✓ | ✓ | ✓ | — |
+| Ver evidencia y verificar cadena (ANALYST+) | ✓ | ✓ | — | — |
+| Aprobar/rechazar propuestas (ANALYST+) | ✓ | ✓ | — | — |
 | Administración de usuarios/claves | ✓ | — | — | — |
 
 ---
@@ -483,17 +519,21 @@ docker compose -f deploy/docker-compose.prod.yml config | grep -c '^ *ports:'
 # Contratos (esquema + OpenAPI + coherencia de grafo)
 bash scripts/validate-contracts.sh
 
-# Auditoría SDD (12 checks independientes)
+# Auditoría SDD (15 checks independientes)
 python scripts/audit_sdd.py
 
 # Backend
 cd apps/backend && python -m pytest -q
+
+# Harness Hermes
+python -m pytest apps/agents/hermes/tests -q
 
 # Informante IA
 cd apps/informant-agent && python -m pytest -q
 
 # Frontend
 cd apps/frontend
+npm test
 npx tsc --noEmit
 npm run lint
 npm run build
@@ -503,11 +543,13 @@ npm run build
 
 | Verificación | Resultado |
 | :--- | :--- |
-| Contratos vs `SEAL.md` | **3/3 hashes OK** |
-| Auditoría SDD | **12/12** |
-| Backend | **436 passed**, 15 skipped en local sin Docker (Testcontainers corre en CI) |
+| Contratos vs `SEAL.md` | **6/6 hashes OK + migración sincronizada** |
+| Auditoría SDD | **15/15** |
+| Backend | **466 passed**, 15 skipped en local sin Docker (Testcontainers corre en CI) |
 | Informant Agent | **36 passed** |
-| Frontend | `tsc` ✓ · `lint` ✓ · `build` ✓ |
+| Frontend tests | **76 passed** |
+| Frontend build | `tsc` ✓ · `lint` ✓ · `build` ✓ |
+| Harness Hermes | **10 passed** |
 | Docker Compose | `config` ✓ · **1** solo `ports:` |
 | E2E ciclo simbiótico | ✓ |
 
@@ -527,6 +569,7 @@ RBAC.
 - [x] **Fase 4** — Auditoría SDD (12/12) y E2E del ciclo simbiótico.
 - [x] **v2.1** — Listados `GET /analyses` y `GET /analyses/{id}/requirements`.
 - [x] **v2.2** — 2FA TOTP, JWT 15 min, `429`, auditoría y operación.
+- [~] **v3.1** — 9 rutas multi-INT/evidencia/propuestas, DDL PostGIS, harness Hermes y UI; sello provisional hasta Testcontainers.
 - [ ] **Despliegue real en VPS** — pendiente de un entorno con daemon Docker.
 - [ ] **Smoke test con servicios vivos** (Neo4j/Redis/Celery/LLM real).
 

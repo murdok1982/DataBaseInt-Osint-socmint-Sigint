@@ -5,7 +5,7 @@
  * SPEC-03 §1/§6 (convenciones: base `/api/v1`, JSON, `Bearer` JWT, API Key M2M,
  * errores `{ error: { code, message } }`).
  *
- * ⚠️  Este cliente expone UNO POR UNO los **29 `operationId`** de
+ * ⚠️  Este cliente expone UNO POR UNO los **38 `operationId`** de
  *     `contracts/openapi.yaml` (v2.1.0, SELLADO). No inventa endpoints ni
  *     campos: si un campo falta, se eleva `SPEC-GAP` (ver README §6).
  *
@@ -48,6 +48,24 @@ export type Role = NonNullable<User["role"]>;
 export type ApiErrorBody = Schemas["Error"];
 export type GraphEdgeType = GraphEdge["type"];
 
+/* v3.1 — multi-INT, evidencia y aprobación (SPEC-01..04). */
+export type GeoPoint = Schemas["GeoPoint"];
+export type ColocationRequest = Schemas["ColocationRequest"];
+export type ColocationResponse = Schemas["ColocationResponse"];
+export type ColocationCluster = Schemas["ColocationCluster"];
+export type ColocationEvent = Schemas["ColocationEvent"];
+export type MultiLayerSubgraphRequest = Schemas["SubgraphRequest"];
+export type MultiLayerSubgraphResponse = Schemas["SubgraphResponse"];
+export type AliasEvasionRequest = Schemas["AliasEvasionRequest"];
+export type AliasEvasionResponse = Schemas["AliasEvasionResponse"];
+export type AliasSignal = Schemas["AliasSignal"];
+export type Proposal = Schemas["Proposal"];
+export type ProposalList = Schemas["ProposalList"];
+export type ProposalDecision = Schemas["ProposalDecision"];
+export type ProposalStatus = NonNullable<Proposal["status"]>;
+export type Evidence = Schemas["Evidence"];
+export type EvidenceVerification = Schemas["EvidenceVerification"];
+
 /* Enums derivados (para listas de UI y validaciones). */
 export const ENTITY_LABEL_VALUES = [
   "Person",
@@ -88,6 +106,9 @@ export type ListCoherenceAlertsQuery = NonNullable<
   operations["listCoherenceAlerts"]["parameters"]["query"]
 >;
 export type RagQuery = NonNullable<operations["searchRag"]["requestBody"]>["content"]["application/json"];
+export type ListProposalsQuery = NonNullable<
+  operations["listProposals"]["parameters"]["query"]
+>;
 export type LockGraphNodeBody = NonNullable<
   NonNullable<operations["lockGraphNode"]["requestBody"]>["content"]
 >["application/json"];
@@ -262,7 +283,7 @@ function websocketUrl(path: string): string {
 }
 
 /* ------------------------------------------------------------------ *
- * API pública — 29 operationId                                        *
+ * API pública - 38 operationId                                        *
  * ------------------------------------------------------------------ */
 export const api = {
   /* ── auth ───────────────────────────────────────────────────────── */
@@ -308,6 +329,50 @@ export const api = {
   /** `getGraphNeighborhood` — GET /graph/neighborhood/{id}?depth= (VIEWER+, máx 3) */
   getGraphNeighborhood: (id: string, query: NeighborhoodQuery = {}): Promise<Subgraph> =>
     request<Subgraph>(`/graph/neighborhood/${encodeURIComponent(id)}`, { query }),
+
+  /* ── v3.1 graph / correlation / evidence / approvals ───────────────── */
+
+  /** `getMultiLayerSubgraph` — POST /graph/subgraph (VIEWER+, presupuesto acotado) */
+  getMultiLayerSubgraph: (body: MultiLayerSubgraphRequest): Promise<MultiLayerSubgraphResponse> =>
+    request<MultiLayerSubgraphResponse>("/graph/subgraph", { method: "POST", body }),
+
+  /** `findSigintSocmintColocation` — POST /correlation/colocation (VIEWER+) */
+  findSigintSocmintColocation: (body: ColocationRequest): Promise<ColocationResponse> =>
+    request<ColocationResponse>("/correlation/colocation", { method: "POST", body }),
+
+  /** `detectAliasEvasion` — POST /analytics/alias-evasion (VIEWER+) */
+  detectAliasEvasion: (body: AliasEvasionRequest): Promise<AliasEvasionResponse> =>
+    request<AliasEvasionResponse>("/analytics/alias-evasion", { method: "POST", body }),
+
+  /** `listProposals` — GET /proposals?status=AGENT_STAGED (ANALYST+) */
+  listProposals: (query: ListProposalsQuery = {}): Promise<ProposalList> =>
+    request<ProposalList>("/proposals", { query }),
+
+  /** `getProposal` — GET /proposals/{id} (ANALYST+) */
+  getProposal: (proposalId: string): Promise<Proposal> =>
+    request<Proposal>(`/proposals/${encodeURIComponent(proposalId)}`),
+
+  /** `approveProposal` — POST /proposals/{id}/approve (ANALYST+, version obligatoria) */
+  approveProposal: (proposalId: string, body: ProposalDecision): Promise<Proposal> =>
+    request<Proposal>(`/proposals/${encodeURIComponent(proposalId)}/approve`, {
+      method: "POST",
+      body,
+    }),
+
+  /** `rejectProposal` — POST /proposals/{id}/reject (ANALYST+, version obligatoria) */
+  rejectProposal: (proposalId: string, body: ProposalDecision): Promise<Proposal> =>
+    request<Proposal>(`/proposals/${encodeURIComponent(proposalId)}/reject`, {
+      method: "POST",
+      body,
+    }),
+
+  /** `getEvidence` — GET /evidence/{id} (VIEWER+, metadatos; nunca bytes sin hash) */
+  getEvidence: (evidenceId: string): Promise<Evidence> =>
+    request<Evidence>(`/evidence/${encodeURIComponent(evidenceId)}`),
+
+  /** `verifyEvidence` — GET /evidence/{id}/verify (ANALYST+, SHA-256 + cadena) */
+  verifyEvidence: (evidenceId: string): Promise<EvidenceVerification> =>
+    request<EvidenceVerification>(`/evidence/${encodeURIComponent(evidenceId)}/verify`),
 
   /* ── context (Pre-Flight, Fase 0) ───────────────────────────────── */
   /** `postContextPreflight` — POST /context/preflight (AI_INFORMANT | ANALYST) */

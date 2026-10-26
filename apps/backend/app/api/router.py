@@ -23,6 +23,7 @@ from app.api.v1 import (
     reports,
     search,
     system,
+    v31,
 )
 
 api_router = APIRouter()
@@ -35,5 +36,7 @@ api_router.include_router(analyses.router)
 api_router.include_router(coherence.router)
 api_router.include_router(search.router)
 api_router.include_router(system.router)
+# v3.1: correlación, propuestas y evidencia (PostgreSQL/PostGIS).
+api_router.include_router(v31.router)
 
 __all__ = ["api_router"]

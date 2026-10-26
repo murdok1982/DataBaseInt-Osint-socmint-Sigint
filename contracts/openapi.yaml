@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: OSINT Nexus API
-  version: 2.2.0
+  version: 3.1.0
   description: >
     Contrato compartido Backend (FastAPI) ↔ Frontend (React) ↔ Informant Agent.
-    Deriva de SPEC-03, SPEC-04 v2.2 y SPEC-06. Estado: SELLADO v2.2.0 (2026-10-17).
+    Deriva de SPEC-01/02/03/04 v3.1 y SPEC-06. Estado: SELLADO v3.1.0 (2026-10-26).
     Autenticación: JWT Bearer (humanos) o API Key M2M (AI_INFORMANT).
     Toda respuesta incluye la cabecera X-Request-ID (SPEC-06 §1.3).
   license:
@@ -28,6 +28,14 @@ tags:
     description: Bandeja de coherencia (alertas de contradicción/corroboración)
   - name: search
     description: Consultas GraphRAG en lenguaje natural
+  - name: correlation
+    description: Colocalización SIGINT-SOCMINT/OSINT (PostGIS, sólo lectura)
+  - name: analytics
+    description: Señales de evasión de alias (rotación, multiplataforma, colisión)
+  - name: proposals
+    description: Cuarentena y aprobación humana de propuestas de agentes
+  - name: evidence
+    description: Inspector y verificación de la cadena de custodia
   - name: system
     description: Salud y metadatos del servicio
 
@@ -530,6 +538,174 @@ paths:
               schema: { $ref: '#/components/schemas/RagResponse' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /correlation/colocation:
+    post:
+      tags: [correlation]
+      operationId: findSigintSocmintColocation
+      summary: Colocalización SIGINT-SOCMINT/OSINT en un radio y ventana (VIEWER+)
+      description: >
+        Ejecuta PostGIS y devuelve clusters con evidencia; el TLP solicitado no
+        puede superar el clearance del rol. No escribe en el grafo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ColocationRequest' }
+      responses:
+        '200':
+          description: Clusters ordenados por score
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ColocationResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /graph/subgraph:
+    post:
+      tags: [graph]
+      operationId: getMultiLayerSubgraph
+      summary: Subgrafo multicapa con validez temporal as_of (VIEWER+)
+      description: >
+        Expande raíces hasta `depth`, filtra por disciplina, Almirantazgo,
+        confianza y TLP. `include_staged` sólo está permitido a ANALYST/ADMIN.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubgraphRequest' }
+      responses:
+        '200':
+          description: Nodos y aristas visibles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SubgraphResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+
+  /analytics/alias-evasion:
+    post:
+      tags: [analytics]
+      operationId: detectAliasEvasion
+      summary: Señales de rotación/colisión de alias (VIEWER+)
+      description: >
+        Devuelve RAPID_ALIAS_ROTATION, CROSS_PLATFORM_REUSE y ALIAS_COLLISION.
+        Una señal no crea ALIAS_OF ni fusiona entidades.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AliasEvasionRequest' }
+      responses:
+        '200':
+          description: Señales explicables
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AliasEvasionResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /proposals:
+    get:
+      tags: [proposals]
+      operationId: listProposals
+      summary: Lista propuestas en cuarentena (ANALYST+)
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [AGENT_STAGED, ANALYST_VERIFIED, APPLIED, REJECTED, EXPIRED] } }
+        - { name: mission_id, in: query, schema: { type: string, format: uuid } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, minimum: 1, maximum: 500 } }
+        - { name: cursor, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Lista paginada con version
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProposalList' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /proposals/{proposal_id}:
+    get:
+      tags: [proposals]
+      operationId: getProposal
+      summary: Propuesta + evidencia + diff (ANALYST+)
+      parameters:
+        - { name: proposal_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Propuesta
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /proposals/{proposal_id}/approve:
+    post:
+      tags: [proposals]
+      operationId: approveProposal
+      summary: Autoriza una propuesta (ANALYST+; no escribe el grafo)
+      parameters:
+        - { name: proposal_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProposalDecision' }
+      responses:
+        '200':
+          description: Propuesta en ANALYST_VERIFIED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /proposals/{proposal_id}/reject:
+    post:
+      tags: [proposals]
+      operationId: rejectProposal
+      summary: Rechaza una propuesta con motivo (ANALYST+)
+      parameters:
+        - { name: proposal_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProposalDecision' }
+      responses:
+        '200':
+          description: Propuesta en REJECTED
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Proposal' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /evidence/{evidence_id}:
+    get:
+      tags: [evidence]
+      operationId: getEvidence
+      summary: Metadatos y payload de evidencia (VIEWER+, TLP aplicado)
+      parameters:
+        - { name: evidence_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Evidencia visible
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Evidence' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /evidence/{evidence_id}/verify:
+    get:
+      tags: [evidence]
+      operationId: verifyEvidence
+      summary: Verifica SHA-256 y cadena de custodia (ANALYST+)
+      parameters:
+        - { name: evidence_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Resultado de verificación
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EvidenceVerification' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /info:
     get:
       tags: [system]
@@ -790,6 +966,209 @@ components:
             code: { type: string }
             message: { type: string }
 
+    GeoPoint:
+      type: object
+      required: [lat, lon]
+      additionalProperties: false
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lon: { type: number, minimum: -180, maximum: 180 }
+
+    TimeWindow:
+      type: object
+      required: [from, to]
+      additionalProperties: false
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+
+    ColocationRequest:
+      type: object
+      required: [mission_id, center, window, disciplines]
+      additionalProperties: false
+      properties:
+        mission_id: { type: string, format: uuid }
+        center: { $ref: '#/components/schemas/GeoPoint' }
+        radius_m: { type: number, minimum: 10, maximum: 5000, default: 500 }
+        window: { $ref: '#/components/schemas/TimeWindow' }
+        disciplines:
+          type: array
+          minItems: 2
+          items: { type: string, enum: [OSINT, SOCMINT, SIGINT, HUMINT, TECHINT, FININT, GEOINT, MIXED] }
+        min_confidence: { type: integer, minimum: 0, maximum: 100, default: 60 }
+        max_tlp: { type: string, enum: [TLP:CLEAR, TLP:GREEN, TLP:AMBER, 'TLP:AMBER+STRICT', TLP:RED] }
+        max_time_delta_s: { type: integer, minimum: 0, maximum: 86400, default: 900 }
+        limit: { type: integer, minimum: 1, maximum: 500, default: 200 }
+
+    ColocationEvent:
+      type: object
+      additionalProperties: true
+      properties:
+        event_id: { type: string, format: uuid }
+        discipline: { type: string, enum: [SIGINT, SOCMINT, OSINT] }
+        event_type: { type: string }
+        event_time: { type: string, format: date-time }
+        distance_m: { type: number }
+        confidence: { type: integer, minimum: 0, maximum: 100 }
+        tlp: { type: string }
+        entity_id: { type: string, format: uuid }
+        observable_id: { type: string, format: uuid }
+        masked_selector: { type: string }
+        evidence_ids: { type: array, items: { type: string, format: uuid } }
+
+    ColocationCluster:
+      type: object
+      additionalProperties: true
+      properties:
+        cluster_id: { type: string }
+        center: { $ref: '#/components/schemas/GeoPoint' }
+        radius_m: { type: number }
+        score: { type: number, minimum: 0, maximum: 1 }
+        disciplines: { type: array, items: { type: string } }
+        events: { type: array, items: { $ref: '#/components/schemas/ColocationEvent' } }
+        time_delta_s: { type: number }
+        evidence_ids: { type: array, items: { type: string, format: uuid } }
+
+    ColocationResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        query: { type: object, additionalProperties: true }
+        clusters: { type: array, items: { $ref: '#/components/schemas/ColocationCluster' } }
+        truncated: { type: boolean }
+        next_cursor: { type: [string, 'null'] }
+        suppressed: { type: integer, minimum: 0 }
+
+    SubgraphRequest:
+      type: object
+      required: [mission_id, root_ids]
+      additionalProperties: false
+      properties:
+        mission_id: { type: string, format: uuid }
+        root_ids: { type: array, minItems: 1, maxItems: 20, items: { type: string, format: uuid } }
+        depth: { type: integer, minimum: 1, maximum: 5, default: 2 }
+        direction: { type: string, enum: [OUT, IN, BOTH], default: BOTH }
+        disciplines: { type: array, items: { type: string } }
+        admiralty_min: { type: string, pattern: '^[A-F][1-6]$' }
+        admiralty_max: { type: string, pattern: '^[A-F][1-6]$' }
+        min_confidence: { type: integer, minimum: 0, maximum: 100 }
+        max_tlp: { type: string }
+        as_of: { type: string, format: date-time }
+        include_staged: { type: boolean, default: false }
+        max_nodes: { type: integer, minimum: 1, maximum: 500, default: 300 }
+        max_edges: { type: integer, minimum: 1, maximum: 2000, default: 1200 }
+        cursor: { type: [string, 'null'] }
+
+    SubgraphResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        nodes: { type: array, items: { type: object, additionalProperties: true } }
+        edges: { type: array, items: { type: object, additionalProperties: true } }
+        truncated: { type: boolean }
+        next_cursor: { type: [string, 'null'] }
+        as_of: { type: string, format: date-time }
+
+    AliasEvasionRequest:
+      type: object
+      required: [mission_id, window]
+      additionalProperties: false
+      properties:
+        mission_id: { type: string, format: uuid }
+        entity_id: { type: [string, 'null'], format: uuid }
+        window: { $ref: '#/components/schemas/TimeWindow' }
+        min_aliases: { type: integer, minimum: 2, maximum: 50, default: 3 }
+        min_platforms: { type: integer, minimum: 1, maximum: 20, default: 2 }
+        max_gap_hours: { type: number, minimum: 0.01, maximum: 720, default: 48 }
+        similarity_threshold: { type: number, minimum: 0, maximum: 1, default: 0.55 }
+        max_tlp: { type: string }
+        limit: { type: integer, minimum: 1, maximum: 500, default: 100 }
+
+    AliasSignal:
+      type: object
+      additionalProperties: true
+      properties:
+        signal_id: { type: string }
+        signal_type: { type: string, enum: [RAPID_ALIAS_ROTATION, CROSS_PLATFORM_REUSE, ALIAS_COLLISION] }
+        entity_id: { type: [string, 'null'], format: uuid }
+        observable_id: { type: [string, 'null'], format: uuid }
+        score: { type: number, minimum: 0, maximum: 1 }
+        occurrences: { type: integer }
+        max_gap_hours: { type: [number, 'null'] }
+        first_seen: { type: string, format: date-time }
+        last_seen: { type: string, format: date-time }
+        aliases: { type: array, items: { type: string } }
+        platforms: { type: array, items: { type: string } }
+        evidence_ids: { type: array, items: { type: string, format: uuid } }
+        explanation: { type: string }
+
+    AliasEvasionResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        signals: { type: array, items: { $ref: '#/components/schemas/AliasSignal' } }
+        truncated: { type: boolean }
+        suppressed: { type: integer }
+
+    Proposal:
+      type: object
+      additionalProperties: true
+      properties:
+        proposal_id: { type: string, format: uuid }
+        proposal_type: { type: string, enum: [OBSERVABLE, RELATIONSHIP, EVENT, ENTITY_MERGE, ALIAS] }
+        status: { type: string, enum: [AGENT_STAGED, ANALYST_VERIFIED, APPLIED, REJECTED, EXPIRED] }
+        mission_id: { type: string, format: uuid }
+        agent_type: { type: string }
+        target_entity_id: { type: [string, 'null'], format: uuid }
+        payload: { type: object, additionalProperties: true }
+        evidence_ids: { type: array, items: { type: string, format: uuid } }
+        confidence: { type: integer, minimum: 0, maximum: 100 }
+        version: { type: integer, minimum: 1 }
+        created_at: { type: string, format: date-time }
+        reviewed_by: { type: [string, 'null'] }
+        reviewed_at: { type: [string, 'null'], format: date-time }
+        decision_reason: { type: [string, 'null'] }
+
+    ProposalList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Proposal' } }
+        truncated: { type: boolean }
+        next_cursor: { type: [string, 'null'] }
+
+    ProposalDecision:
+      type: object
+      required: [reason, version]
+      additionalProperties: false
+      properties:
+        reason: { type: string, minLength: 8, maxLength: 2000 }
+        version: { type: integer, minimum: 1 }
+
+    Evidence:
+      type: object
+      additionalProperties: true
+      properties:
+        evidence_id: { type: string, format: uuid }
+        payload_sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        tlp: { type: string }
+        collector_agent: { type: string }
+        source_type: { type: string }
+        source_uri: { type: string }
+        captured_at: { type: string, format: date-time }
+        received_at: { type: string, format: date-time }
+        payload: { type: object, additionalProperties: true }
+        metadata: { type: object, additionalProperties: true }
+
+    EvidenceVerification:
+      type: object
+      properties:
+        evidence_id: { type: string, format: uuid }
+        valid: { type: boolean }
+        stored_sha256: { type: string }
+        computed_sha256: { type: string }
+        chain_valid: { type: boolean }
+        checked_at: { type: string, format: date-time }
+
   responses:
     Unauthorized:
       description: No autenticado
@@ -817,6 +1196,16 @@ components:
         Retry-After:
           description: Segundos hasta que se levante el bloqueo
           schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Petición inválida (EARS/contrato)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    PayloadTooLarge:
+      description: Se excedió el límite de nodos/aristas de la consulta
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }

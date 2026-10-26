@@ -22,16 +22,25 @@ import AnalysisWorkspace from "@/components/analysis/AnalysisWorkspace";
 import CoherenceInbox from "@/components/coherence/CoherenceInbox";
 import DossierPanel from "@/components/dossier/DossierPanel";
 import ReportViewer from "@/components/dossier/ReportViewer";
+import EvidenceInspector from "@/components/evidence/EvidenceInspector";
 import GraphCanvas from "@/components/graph/GraphCanvas";
 import GraphFilters, { DEFAULT_FILTERS, type GraphFilterState } from "@/components/graph/GraphFilters";
 import Timeline, { type TimeWindow } from "@/components/graph/Timeline";
 import IngestDropzone from "@/components/ingest/IngestDropzone";
+import MultiIntWorkspace from "@/components/multiint/MultiIntWorkspace";
+import ApprovalInbox from "@/components/proposals/ApprovalInbox";
 import SearchConsole from "@/components/search/SearchConsole";
 import { useAuth, type RbacAction } from "@/context/AuthContext";
 import { ApiError, api } from "@/services/api";
 import type { CoherenceAlert, GraphEdge, GraphNode, GraphNodeUpdate, Subgraph } from "@/services/api";
 
-type DashboardView = "graph" | "dossier" | "analysis" | "coherence";
+type DashboardView =
+  | "graph"
+  | "dossier"
+  | "analysis"
+  | "coherence"
+  | "multiint"
+  | "approvals";
 
 interface ViewTab {
   id: DashboardView;
@@ -45,6 +54,8 @@ const VIEW_TABS: readonly ViewTab[] = [
   { id: "dossier", label: "Dossier", spec: "SPEC-05 §3", action: "graph:read" },
   { id: "analysis", label: "Análisis", spec: "SPEC-05 §4", action: "analysis:read" },
   { id: "coherence", label: "Coherencia", spec: "SPEC-05 §5", action: "coherence:read" },
+  { id: "multiint", label: "Multi-INT", spec: "SPEC-03/04 §3-4", action: "multiint:read" },
+  { id: "approvals", label: "Aprobaciones", spec: "SPEC-04 §3.6", action: "proposal:read" },
 ];
 
 interface ReportCitationModal {
@@ -85,6 +96,7 @@ export default function DashboardPage(): ReactElement {
   const [searchHighlight, setSearchHighlight] = useState<string[]>([]);
   const [alerts, setAlerts] = useState<CoherenceAlert[]>([]);
   const [reportModal, setReportModal] = useState<ReportCitationModal | null>(null);
+  const [evidenceModalId, setEvidenceModalId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "anonymous") router.replace("/login");
@@ -453,8 +465,41 @@ export default function DashboardPage(): ReactElement {
               onChanged={() => setReloadToken((token) => token + 1)}
             />
           )}
+
+          {view === "multiint" && (
+            <MultiIntWorkspace
+              canSeeStaged={can("analysis:write")}
+              canVerifyEvidence={can("evidence:verify")}
+            />
+          )}
+
+          {view === "approvals" && can("proposal:read") && (
+            <ApprovalInbox
+              canDecide={can("proposal:decide")}
+              onOpenEvidence={setEvidenceModalId}
+              onChanged={() => setReloadToken((token) => token + 1)}
+            />
+          )}
         </main>
       </div>
+
+      {/* Inspector de evidencia v3.1 (hash + cadena de custodia) */}
+      {evidenceModalId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Inspector de evidencia"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-base-950/80 p-4"
+        >
+          <div className="h-[80vh] w-full max-w-3xl">
+            <EvidenceInspector
+              evidenceId={evidenceModalId}
+              canVerify={can("evidence:verify")}
+              onClose={() => setEvidenceModalId(null)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Visor de evidencia (cita OSINT) reutilizable desde cualquier vista */}
       {reportModal && (

@@ -216,6 +216,68 @@ async def authorize_websocket(
 # =====================================================================
 # Acceso al grafo (delega en GraphRepository — zona Agente 1)
 # =====================================================================
+# =====================================================================
+# Acceso v3.1 (PostgreSQL/PostGIS)
+# =====================================================================
+@lru_cache(maxsize=1)
+def get_v31_pool() -> Any:
+    """Pool PostgreSQL perezoso para las consultas v3.1.
+
+    Sin ``POSTGRES_DSN`` responde 503: la app sigue arrancando y las rutas
+    clásicas (Neo4j) no se ven afectadas. La base nunca se publica; el pool vive
+    sólo dentro del backend (Constitución, Regla 4).
+    """
+    try:
+        from app.db.postgres_driver import (
+            create_pool,
+            get_dsn,
+            verify_connectivity,
+        )
+
+        if not get_dsn():
+            raise ServiceUnavailable(
+                "POSTGRES_DSN no configurado; las consultas v3.1 no están disponibles."
+            )
+        pool = create_pool()
+        verify_connectivity(pool)
+        return pool
+    except ServiceUnavailable:
+        raise
+    except Exception as exc:  # pragma: no cover - requiere PostgreSQL real
+        raise ServiceUnavailable(
+            f"PostgreSQL v3.1 no disponible: {exc}"
+        ) from exc
+
+
+@lru_cache(maxsize=1)
+def get_v31_gateway() -> Any:
+    """``V31Gateway`` sobre ``PostgresV31Repository`` (sustituible en tests)."""
+    from app.api.v31_gateway import V31Gateway
+
+    try:
+        from app.db.postgres_v31_repository import PostgresV31Repository
+    except Exception as exc:  # pragma: no cover - import defensivo
+        raise ServiceUnavailable(
+            f"Repositorio v3.1 no disponible: {exc}"
+        ) from exc
+    return V31Gateway(PostgresV31Repository(get_v31_pool()))
+
+
+def close_v31_pool() -> None:
+    """Cierra el pool v3.1 (idempotente)."""
+    try:
+        pool = get_v31_pool()
+    except Exception:
+        return
+    try:
+        from app.db.postgres_driver import close
+
+        close(pool)
+    finally:
+        get_v31_gateway.cache_clear()
+        get_v31_pool.cache_clear()
+
+
 @lru_cache(maxsize=1)
 def get_graph_driver() -> Any:
     """Driver Neo4j perezoso y cacheado por proceso (Constitución, Regla 4).

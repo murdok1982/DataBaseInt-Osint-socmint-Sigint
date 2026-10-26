@@ -1,12 +1,12 @@
-# OSINT Nexus — Frontend (Dashboard, 4 vistas)
+# OSINT Nexus — Frontend (Dashboard multi-INT, 6 vistas)
 
 > **Agente 4 — Arquitecto Frontend UI.**
 > Specs rectoras: [`specs/05-dashboard-ui-ux.spec.md`](../../specs/05-dashboard-ui-ux.spec.md) (v2.0)
 > y [`specs/03-api-and-graphrag.spec.md`](../../specs/03-api-and-graphrag.spec.md) (v2.0).
-> Contrato consumido: [`contracts/openapi.yaml`](../../contracts/openapi.yaml) (**v2.0.0, SELLADO**).
+> Contrato consumido: [`contracts/openapi.yaml`](../../contracts/openapi.yaml) (**v3.1.0, sello provisional**).
 > Referencia visual: [`.antigravity/midjourney-ui-prompts.md`](../../.antigravity/midjourney-ui-prompts.md).
 
-Stack: **Next.js 15 (App Router) + React 19 + TypeScript estricto + Tailwind CSS + Cytoscape.js**.
+Stack: **Next.js 15 (App Router) + React 19 + TypeScript estricto + Tailwind CSS + Cytoscape.js + MapLibre GL**.
 
 ---
 
@@ -35,6 +35,7 @@ npm run build            # build de producción (incluye lint + tipos)
 | :--- | :--- |
 | `NEXT_PUBLIC_API_BASE_URL` | Base de la API. Vacío → `/api/v1` (mismo origen / Nginx). |
 | `BACKEND_ORIGIN` | Sólo dev: destino del rewrite `/api/v1/*` de Next. |
+| `NEXT_PUBLIC_MAP_STYLE_URL` | Estilo MapLibre propio. Si falta, el mapa usa un fondo local sin tiles externos. |
 
 Autenticación de sesión: access token JWT en memoria (**Bearer**, 15 min,
 SPEC-04 §2) + refresh token en cookie **HttpOnly/Secure** (todas las llamadas se
@@ -43,7 +44,7 @@ hacen con `credentials: "include"`). **2FA (TOTP)** opcional en el login
 
 ---
 
-## 2. Las 4 vistas (SPEC-05 §0)
+## 2. Vistas (SPEC-05 §0 + SPEC-04 v3.1)
 
 Navegables desde la barra de pestañas del dashboard (`src/app/page.tsx`); el
 estado del grafo se conserva entre vistas.
@@ -56,6 +57,8 @@ estado del grafo se conserva entre vistas.
 | 4 | **Bandeja de Coherencia** | `components/coherence/*` | §5 |
 | — | Ingesta drag & drop | `components/ingest/*` | §6 |
 | — | Consola GraphRAG | `components/search/*` | §1/§7 |
+| 5 | **Workspace Multi-INT** | `components/multiint/*`, `components/map/*`, `components/graph/MultiLayerGraph.tsx` | SPEC-03/04 §3 |
+| 6 | **Bandeja de aprobación** | `components/proposals/*`, `components/evidence/*` | SPEC-04 §3.6 |
 
 Seleccionar un nodo en el grafo (clic) abre el **Dossier** (vista 2) sin perder
 el grafo; doble clic o el botón «Expandir vecindad» consultan
@@ -73,14 +76,14 @@ apps/frontend/
 ├── tailwind.config.ts           # paleta dark/neon
 ├── .eslintrc.json / .env.example
 └── src/
-    ├── types/api.d.ts           # TIPOS GENERADOS por openapi-typescript (v2.0.0)
-    ├── services/api.ts          # cliente tipado — los 27 operationId
+    ├── types/api.d.ts           # TIPOS GENERADOS por openapi-typescript (v3.1.0)
+    ├── services/api.ts          # cliente tipado — los 38 operationId
     ├── lib/labels.ts            # colores por label, relaciones y semántica de confianza
     ├── context/AuthContext.tsx  # JWT + 2FA + rol + can(action) (matriz SPEC-04)
     ├── app/
     │   ├── layout.tsx           # <AuthProvider> + dark shell
     │   ├── globals.css
-    │   ├── page.tsx             # shell + navegación de las 4 vistas + transversales
+    │   ├── page.tsx             # shell + navegación de las 6 vistas + transversales
     │   └── login/page.tsx       # acceso (usuario/contraseña + TOTP opcional)
     └── components/
         ├── graph/GraphCanvas.tsx
@@ -92,7 +95,11 @@ apps/frontend/
         ├── analysis/AnalysisWorkspace.tsx
         ├── coherence/CoherenceInbox.tsx
         ├── ingest/IngestDropzone.tsx
-        └── search/SearchConsole.tsx
+        ├── search/SearchConsole.tsx
+        ├── multiint/MultiIntWorkspace.tsx
+        ├── map/MultiIntMap.tsx + EventTimeline.tsx
+        ├── proposals/ApprovalInbox.tsx
+        └── evidence/EvidenceInspector.tsx
 ```
 
 `src/types/api.d.ts` **se genera** con `npm run gen:api`
@@ -212,7 +219,7 @@ canónicos v2.0: `ADMIN`, `ANALYST`, `VIEWER`; `ANALYST` sustituye a `OPERATOR`)
 - **SPEC-GAP-5 (integración) — Backend aún en v1.0.** `apps/backend` sigue
   sirviendo `evidence_quote`/`text_evidence_span` y **no** publica las rutas
   `/analyses`, `/coherence`, `/graph/nodes/{id}/lock`, `/context/preflight`
-  (fuera de la zona del Agente 4). El frontend ya consume el contrato **v2.0.0**;
+  (fuera de la zona del Agente 4). El frontend ya consume el contrato **v3.1.0**;
   hasta que el backend migre, esas vistas devolverán `404`/`403`. Se reporta al
   Orquestador.
 
@@ -220,7 +227,7 @@ canónicos v2.0: `ADMIN`, `ANALYST`, `VIEWER`; `ANALYST` sustituye a `OPERATOR`)
 
 ## 9. Definición de Done (verificación)
 
-- [x] Las 4 vistas existen y son navegables (pestañas en `src/app/page.tsx`).
+- [x] Las 6 vistas existen y son navegables (pestañas en `src/app/page.tsx`).
 - [x] El grafo distingue visualmente `locked_by_analyst` (sólido) y evidencia de
       IA sin verificar (punteado) y contradicción (rojo).
 - [x] El resaltado de evidencia usa `page_number` + span reales (`exact_quote`).

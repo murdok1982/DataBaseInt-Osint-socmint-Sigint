@@ -1,6 +1,6 @@
 # SPEC-02 — Harness Hermes, Tool Calling e Ingesta Multi-INT
 
-> **Estado: DRAFT v0.1.0 — PROPUESTA, no aprobada.**
+> **Estado: APROBADA v3.1 (2026-10-26) — implementación autorizada por el usuario.**
 > Autorizado por: `SPEC.md` v3.0.0, `specs/00-AUDIT.md`, `specs/SPEC-01-DATA-MODEL.md`.
 > Aprobador requerido: usuario. Sin aprobación no se modifica `apps/agents/**`, `apps/informant-agent/**` ni `apps/backend/app/services/**`.
 

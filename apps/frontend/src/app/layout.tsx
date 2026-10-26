@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 
 import { AuthProvider } from "@/context/AuthContext";
 
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

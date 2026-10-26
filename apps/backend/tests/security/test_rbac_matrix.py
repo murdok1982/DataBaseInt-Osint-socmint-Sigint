@@ -488,10 +488,10 @@ def test_every_contract_operation_is_implemented_and_has_allowed_roles(
 
 
 def test_endpoint_matrix_is_consistent_with_contract() -> None:
-    """``ENDPOINT_MATRIX`` cubre los 29 endpoints y respeta la matriz."""
+    """``ENDPOINT_MATRIX`` cubre todos los endpoints y respeta la matriz."""
     matrix_ids = {operation_id for _m, _p, operation_id, _perm in ENDPOINT_MATRIX}
     assert matrix_ids == set(MIN_ROLE_BY_OPERATION)
-    assert len(ENDPOINT_MATRIX) == len(_contract_operation_ids()) == 29
+    assert len(ENDPOINT_MATRIX) == len(_contract_operation_ids())
 
     for _method, _path, operation_id, permission in ENDPOINT_MATRIX:
         allowed = ALLOWED_ROLES_BY_OPERATION[operation_id]

@@ -415,6 +415,168 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/correlation/colocation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Colocalización SIGINT-SOCMINT/OSINT en un radio y ventana (VIEWER+)
+         * @description Ejecuta PostGIS y devuelve clusters con evidencia; el TLP solicitado no puede superar el clearance del rol. No escribe en el grafo.
+         */
+        post: operations["findSigintSocmintColocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/graph/subgraph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Subgrafo multicapa con validez temporal as_of (VIEWER+)
+         * @description Expande raíces hasta `depth`, filtra por disciplina, Almirantazgo, confianza y TLP. `include_staged` sólo está permitido a ANALYST/ADMIN.
+         */
+        post: operations["getMultiLayerSubgraph"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analytics/alias-evasion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Señales de rotación/colisión de alias (VIEWER+)
+         * @description Devuelve RAPID_ALIAS_ROTATION, CROSS_PLATFORM_REUSE y ALIAS_COLLISION. Una señal no crea ALIAS_OF ni fusiona entidades.
+         */
+        post: operations["detectAliasEvasion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista propuestas en cuarentena (ANALYST+) */
+        get: operations["listProposals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Propuesta + evidencia + diff (ANALYST+) */
+        get: operations["getProposal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/proposals/{proposal_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Autoriza una propuesta (ANALYST+; no escribe el grafo) */
+        post: operations["approveProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/proposals/{proposal_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rechaza una propuesta con motivo (ANALYST+) */
+        post: operations["rejectProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evidence/{evidence_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metadatos y payload de evidencia (VIEWER+, TLP aplicado) */
+        get: operations["getEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/evidence/{evidence_id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Verifica SHA-256 y cadena de custodia (ANALYST+) */
+        get: operations["verifyEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/info": {
         parameters: {
             query?: never;
@@ -646,6 +808,230 @@ export interface components {
                 message?: string;
             };
         };
+        GeoPoint: {
+            lat: number;
+            lon: number;
+        };
+        TimeWindow: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+        };
+        ColocationRequest: {
+            /** Format: uuid */
+            mission_id: string;
+            center: components["schemas"]["GeoPoint"];
+            /** @default 500 */
+            radius_m: number;
+            window: components["schemas"]["TimeWindow"];
+            disciplines: ("OSINT" | "SOCMINT" | "SIGINT" | "HUMINT" | "TECHINT" | "FININT" | "GEOINT" | "MIXED")[];
+            /** @default 60 */
+            min_confidence: number;
+            /** @enum {string} */
+            max_tlp?: "TLP:CLEAR" | "TLP:GREEN" | "TLP:AMBER" | "TLP:AMBER+STRICT" | "TLP:RED";
+            /** @default 900 */
+            max_time_delta_s: number;
+            /** @default 200 */
+            limit: number;
+        };
+        ColocationEvent: {
+            /** Format: uuid */
+            event_id?: string;
+            /** @enum {string} */
+            discipline?: "SIGINT" | "SOCMINT" | "OSINT";
+            event_type?: string;
+            /** Format: date-time */
+            event_time?: string;
+            distance_m?: number;
+            confidence?: number;
+            tlp?: string;
+            /** Format: uuid */
+            entity_id?: string;
+            /** Format: uuid */
+            observable_id?: string;
+            masked_selector?: string;
+            evidence_ids?: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        ColocationCluster: {
+            cluster_id?: string;
+            center?: components["schemas"]["GeoPoint"];
+            radius_m?: number;
+            score?: number;
+            disciplines?: string[];
+            events?: components["schemas"]["ColocationEvent"][];
+            time_delta_s?: number;
+            evidence_ids?: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        ColocationResponse: {
+            query?: {
+                [key: string]: unknown;
+            };
+            clusters?: components["schemas"]["ColocationCluster"][];
+            truncated?: boolean;
+            next_cursor?: string | null;
+            suppressed?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        SubgraphRequest: {
+            /** Format: uuid */
+            mission_id: string;
+            root_ids: string[];
+            /** @default 2 */
+            depth: number;
+            /**
+             * @default BOTH
+             * @enum {string}
+             */
+            direction: "OUT" | "IN" | "BOTH";
+            disciplines?: string[];
+            admiralty_min?: string;
+            admiralty_max?: string;
+            min_confidence?: number;
+            max_tlp?: string;
+            /** Format: date-time */
+            as_of?: string;
+            /** @default false */
+            include_staged: boolean;
+            /** @default 300 */
+            max_nodes: number;
+            /** @default 1200 */
+            max_edges: number;
+            cursor?: string | null;
+        };
+        SubgraphResponse: {
+            nodes?: {
+                [key: string]: unknown;
+            }[];
+            edges?: {
+                [key: string]: unknown;
+            }[];
+            truncated?: boolean;
+            next_cursor?: string | null;
+            /** Format: date-time */
+            as_of?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        AliasEvasionRequest: {
+            /** Format: uuid */
+            mission_id: string;
+            /** Format: uuid */
+            entity_id?: string | null;
+            window: components["schemas"]["TimeWindow"];
+            /** @default 3 */
+            min_aliases: number;
+            /** @default 2 */
+            min_platforms: number;
+            /** @default 48 */
+            max_gap_hours: number;
+            /** @default 0.55 */
+            similarity_threshold: number;
+            max_tlp?: string;
+            /** @default 100 */
+            limit: number;
+        };
+        AliasSignal: {
+            signal_id?: string;
+            /** @enum {string} */
+            signal_type?: "RAPID_ALIAS_ROTATION" | "CROSS_PLATFORM_REUSE" | "ALIAS_COLLISION";
+            /** Format: uuid */
+            entity_id?: string | null;
+            /** Format: uuid */
+            observable_id?: string | null;
+            score?: number;
+            occurrences?: number;
+            max_gap_hours?: number | null;
+            /** Format: date-time */
+            first_seen?: string;
+            /** Format: date-time */
+            last_seen?: string;
+            aliases?: string[];
+            platforms?: string[];
+            evidence_ids?: string[];
+            explanation?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        AliasEvasionResponse: {
+            signals?: components["schemas"]["AliasSignal"][];
+            truncated?: boolean;
+            suppressed?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        Proposal: {
+            /** Format: uuid */
+            proposal_id?: string;
+            /** @enum {string} */
+            proposal_type?: "OBSERVABLE" | "RELATIONSHIP" | "EVENT" | "ENTITY_MERGE" | "ALIAS";
+            /** @enum {string} */
+            status?: "AGENT_STAGED" | "ANALYST_VERIFIED" | "APPLIED" | "REJECTED" | "EXPIRED";
+            /** Format: uuid */
+            mission_id?: string;
+            agent_type?: string;
+            /** Format: uuid */
+            target_entity_id?: string | null;
+            payload?: {
+                [key: string]: unknown;
+            };
+            evidence_ids?: string[];
+            confidence?: number;
+            version?: number;
+            /** Format: date-time */
+            created_at?: string;
+            reviewed_by?: string | null;
+            /** Format: date-time */
+            reviewed_at?: string | null;
+            decision_reason?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        ProposalList: {
+            items?: components["schemas"]["Proposal"][];
+            truncated?: boolean;
+            next_cursor?: string | null;
+        };
+        ProposalDecision: {
+            reason: string;
+            version: number;
+        };
+        Evidence: {
+            /** Format: uuid */
+            evidence_id?: string;
+            payload_sha256?: string;
+            tlp?: string;
+            collector_agent?: string;
+            source_type?: string;
+            source_uri?: string;
+            /** Format: date-time */
+            captured_at?: string;
+            /** Format: date-time */
+            received_at?: string;
+            payload?: {
+                [key: string]: unknown;
+            };
+            metadata?: {
+                [key: string]: unknown;
+            };
+        } & {
+            [key: string]: unknown;
+        };
+        EvidenceVerification: {
+            /** Format: uuid */
+            evidence_id?: string;
+            valid?: boolean;
+            stored_sha256?: string;
+            computed_sha256?: string;
+            chain_valid?: boolean;
+            /** Format: date-time */
+            checked_at?: string;
+        };
     };
     responses: {
         /** @description No autenticado */
@@ -689,6 +1075,24 @@ export interface components {
             headers: {
                 /** @description Segundos hasta que se levante el bloqueo */
                 "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Petición inválida (EARS/contrato) */
+        ValidationError: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Se excedió el límite de nodos/aristas de la consulta */
+        PayloadTooLarge: {
+            headers: {
                 [name: string]: unknown;
             };
             content: {
@@ -1404,6 +1808,232 @@ export interface operations {
                 };
             };
             403: components["responses"]["Forbidden"];
+        };
+    };
+    findSigintSocmintColocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ColocationRequest"];
+            };
+        };
+        responses: {
+            /** @description Clusters ordenados por score */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ColocationResponse"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["ValidationError"];
+        };
+    };
+    getMultiLayerSubgraph: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubgraphRequest"];
+            };
+        };
+        responses: {
+            /** @description Nodos y aristas visibles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubgraphResponse"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            413: components["responses"]["PayloadTooLarge"];
+        };
+    };
+    detectAliasEvasion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AliasEvasionRequest"];
+            };
+        };
+        responses: {
+            /** @description Señales explicables */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AliasEvasionResponse"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listProposals: {
+        parameters: {
+            query?: {
+                status?: "AGENT_STAGED" | "ANALYST_VERIFIED" | "APPLIED" | "REJECTED" | "EXPIRED";
+                mission_id?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lista paginada con version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalList"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getProposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Propuesta */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Proposal"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    approveProposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposalDecision"];
+            };
+        };
+        responses: {
+            /** @description Propuesta en ANALYST_VERIFIED */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Proposal"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    rejectProposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposalDecision"];
+            };
+        };
+        responses: {
+            /** @description Propuesta en REJECTED */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Proposal"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evidencia visible */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Evidence"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    verifyEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resultado de verificación */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceVerification"];
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
     getInfo: {

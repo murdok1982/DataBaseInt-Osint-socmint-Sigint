@@ -43,10 +43,23 @@ def check_hashes() -> None:
     except OSError as exc:  # pragma: no cover
         add("HASH", "SEAL.md legible", False, str(exc))
         return
-    for name in ("graph-constraints.cypher", "extraction-schema.json", "openapi.yaml"):
+    for name in (
+        "graph-constraints.cypher",
+        "extraction-schema.json",
+        "openapi.yaml",
+        "v3/hermes-tools.json",
+        "v3/db-contract-v3.1.sql",
+    ):
         path = CONTRACTS / name
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         add(f"HASH:{name}", f"{name} == SEAL.md", digest in seal, digest)
+
+    # El contrato v3.1 y la migración deben ser byte a byte iguales; si no, el
+    # sello certifica un DDL distinto del que se aplica.
+    migration = ROOT / "migrations" / "v3.1" / "0001_schema.sql"
+    contract = CONTRACTS / "v3" / "db-contract-v3.1.sql"
+    same = migration.exists() and contract.exists() and migration.read_bytes() == contract.read_bytes()
+    add("HASH:v3.1-sync", "migración v3.1 == db-contract-v3.1.sql", same)
 
 
 # --- 2/3. Cobertura de operaciones ------------------------------------------

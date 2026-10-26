@@ -113,7 +113,14 @@ describe("matriz RBAC de la UI", () => {
     const viewerAllowed = (Object.keys(RBAC_MATRIX) as (keyof typeof RBAC_MATRIX)[]).filter(
       (action) => RBAC_MATRIX[action].includes("VIEWER"),
     );
-    expect(viewerAllowed.sort()).toEqual(["analysis:read", "graph:read", "rag:query", "reports:read"]);
+    expect(viewerAllowed.sort()).toEqual([
+      "analysis:read",
+      "evidence:read",
+      "graph:read",
+      "multiint:read",
+      "rag:query",
+      "reports:read",
+    ]);
   });
 
   it("can() devuelve false para acciones fuera del rol del operador", async () => {

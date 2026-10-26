@@ -56,6 +56,11 @@ export type RbacAction =
   | "graph:update" // PUT /graph/nodes/{id}
   | "graph:lock" // POST /graph/nodes/{id}/lock
   | "graph:delete" // DELETE /graph/nodes/{id}
+  | "multiint:read" // POST /graph/subgraph, /correlation/colocation, /analytics/alias-evasion
+  | "evidence:read" // GET /evidence/{id}
+  | "evidence:verify" // GET /evidence/{id}/verify
+  | "proposal:read" // GET /proposals, /proposals/{id}
+  | "proposal:decide" // POST /proposals/{id}/approve|reject
   | "admin:manage"; // operadores, API Keys, backups (fuera del contrato; reservado a ADMIN)
 
 const ALL_ROLES: readonly Role[] = ["ADMIN", "ANALYST", "VIEWER"];
@@ -75,6 +80,11 @@ export const RBAC_MATRIX: Readonly<Record<RbacAction, readonly Role[]>> = {
   "graph:update": ANALYST_PLUS,
   "graph:lock": ANALYST_PLUS,
   "graph:delete": ADMIN_ONLY,
+  "multiint:read": ALL_ROLES,
+  "evidence:read": ALL_ROLES,
+  "evidence:verify": ANALYST_PLUS,
+  "proposal:read": ANALYST_PLUS,
+  "proposal:decide": ANALYST_PLUS,
   "admin:manage": ADMIN_ONLY,
 };
 

@@ -1,6 +1,6 @@
 # SPEC-01 — Modelo de Datos Multi-INT, Custodia y Fusión
 
-> **Estado: DRAFT v0.1.0 — PROPUESTA, no aprobada.**
+> **Estado: APROBADA v3.1 (2026-10-26) — implementación autorizada por el usuario.**
 > Fase SDD: especificación de datos (previa a implementación).
 > Autorizado por: `SPEC.md` v3.0.0 (base), `AUDIT.md`, `specs/00-AUDIT.md`.
 > Sustituye/complementa: `contracts/v3/db-contract.sql` (v3.0.0) en la materia de observables, eventos y selectores.

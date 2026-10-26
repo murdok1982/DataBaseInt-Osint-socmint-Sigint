@@ -27,6 +27,15 @@ const CASES: Case[] = [
   { operationId: "lockGraphNode", call: () => api.lockGraphNode("n1"), method: "POST", path: "/graph/nodes/n1/lock" },
   { operationId: "listGraphEdges", call: () => api.listGraphEdges({}), method: "GET", path: "/graph/edges" },
   { operationId: "getGraphNeighborhood", call: () => api.getGraphNeighborhood("n1", {}), method: "GET", path: "/graph/neighborhood/n1" },
+  { operationId: "getMultiLayerSubgraph", call: () => api.getMultiLayerSubgraph({} as never), method: "POST", path: "/graph/subgraph" },
+  { operationId: "findSigintSocmintColocation", call: () => api.findSigintSocmintColocation({} as never), method: "POST", path: "/correlation/colocation" },
+  { operationId: "detectAliasEvasion", call: () => api.detectAliasEvasion({} as never), method: "POST", path: "/analytics/alias-evasion" },
+  { operationId: "listProposals", call: () => api.listProposals({ status: "AGENT_STAGED" }), method: "GET", path: "/proposals?status=AGENT_STAGED" },
+  { operationId: "getProposal", call: () => api.getProposal("p1"), method: "GET", path: "/proposals/p1" },
+  { operationId: "approveProposal", call: () => api.approveProposal("p1", { reason: "ok", version: 1 }), method: "POST", path: "/proposals/p1/approve" },
+  { operationId: "rejectProposal", call: () => api.rejectProposal("p1", { reason: "no", version: 1 }), method: "POST", path: "/proposals/p1/reject" },
+  { operationId: "getEvidence", call: () => api.getEvidence("e1"), method: "GET", path: "/evidence/e1" },
+  { operationId: "verifyEvidence", call: () => api.verifyEvidence("e1"), method: "GET", path: "/evidence/e1/verify" },
   { operationId: "postContextPreflight", call: () => api.postContextPreflight({} as never), method: "POST", path: "/context/preflight" },
   { operationId: "createIngestJob", call: () => api.createIngestJob(file(), "Título"), method: "POST", path: "/ingest" },
   { operationId: "createInformantIngestJob", call: () => api.createInformantIngestJob(file(), "{}", "tok"), method: "POST", path: "/ingest/informant" },
@@ -66,9 +75,9 @@ describe("contrato de rutas del cliente (openapi.yaml)", () => {
     expect(url).toBe(`/api/v1${path}`);
   });
 
-  it("cubre las 29 operaciones del contrato (28 HTTP + ingestProgressWs por WebSocket)", () => {
+  it("cubre las 38 operaciones del contrato (37 HTTP + ingestProgressWs por WebSocket)", () => {
     const operations = new Set([...CASES.map((c) => c.operationId), "ingestProgressWs"]);
-    expect(operations.size).toBe(29);
+    expect(operations.size).toBe(38);
   });
 });
 

@@ -1,6 +1,6 @@
 # SPEC-03 — Motor de Correlación y Endpoints Analíticos
 
-> **Estado: DRAFT v0.1.0 — PROPUESTA, no aprobada.**
+> **Estado: APROBADA v3.1 (2026-10-26) — implementación autorizada por el usuario.**
 > Depende de: `SPEC-01-DATA-MODEL.md` (tablas/índices) y `SPEC-02-HERMES-HARNESS-INGESTION.md` (tools/estado).
 > Aprobador requerido: usuario. Sin aprobación no se modifica `apps/backend/app/api/**`, `app/services/**` ni `contracts/openapi.yaml`.
 

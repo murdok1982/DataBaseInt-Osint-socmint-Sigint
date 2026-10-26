@@ -163,7 +163,10 @@ services:
   # Capa 1 (ledger append-only) + capa 2 (grafo validado STIX 2.1).
   # Sin `ports:`: solo accesible desde internal_intel_net (Regla 4).
   postgres:
-    image: pgvector/pgvector:pg16
+    # v3.1 exige PostGIS + pgvector en el mismo motor. La imagen se construye
+    # desde deploy/postgres/Dockerfile; no se publica ningún puerto.
+    build: ./postgres
+    image: osint-nexus-postgres:16-postgis
     logging: *default-logging
     networks: [internal_intel_net]
     environment:
@@ -174,7 +177,9 @@ services:
       POSTGRES_INITDB_ARGS: "--data-checksums"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../contracts/v3/db-contract.sql:/docker-entrypoint-initdb.d/10-db-contract.sql:ro
+      # Sólo se ejecuta en un volumen nuevo. Para migrar una base v3.0
+      # existente, aplicar db-contract-v3.1.sql manualmente (ver README).
+      - ../contracts/v3/db-contract-v3.1.sql:/docker-entrypoint-initdb.d/10-db-contract.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-osint_owner} -d ${POSTGRES_DB:-osint}"]
       interval: 10s

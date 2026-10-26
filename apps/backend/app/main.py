@@ -30,7 +30,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.deps import close_graph_driver
+from app.api.deps import close_graph_driver, close_v31_pool
 from app.api.router import api_router
 from app.core.audit import AuditMiddleware
 from app.core.metrics import PrometheusMiddleware, metrics_app
@@ -45,10 +45,10 @@ from app.core.errors import (
 from app.services.preflight import PreflightRequiredError
 
 API_TITLE = "OSINT Nexus API"
-API_VERSION = "2.2.0"
+API_VERSION = "3.1.0"
 API_DESCRIPTION = (
-    "API de inteligencia OSINT (grafo de conocimiento + GraphRAG). "
-    "Contrato SELLADO v2.2.0 derivado de SPEC-03, SPEC-04 y SPEC-06."
+    "API de inteligencia OSINT (grafo de conocimiento + GraphRAG + correlación "
+    "multi-INT). Contrato SELLADO v3.1.0 derivado de SPEC-01/02/03/04 y SPEC-06."
 )
 API_PREFIX = "/api/v1"
 #: Fuera de ``/api/v1``: solo accesible por la red interna (Prometheus).
@@ -68,6 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Arranque/apagado: no se toca la base de datos hasta la primera consulta."""
     yield
     close_graph_driver()
+    close_v31_pool()
 
 
 def _envelope(exc: StarletteHTTPException) -> dict[str, Any]:

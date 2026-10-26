@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://osint-nexus.local/contracts/v3/hermes-tools.json",
+  "title": "OSINT Nexus v3.1 — Hermes tool contracts",
+  "description": "Bundle JSON Schema 2020-12 de las cinco tools del harness (SPEC-02 §4–§8). additionalProperties=false en todos los envelopes; los $ref son locales y no se resuelven en runtime.",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/$defs/SearchExistingEntities" },
+    { "$ref": "#/$defs/IngestMultiIntObservable" },
+    { "$ref": "#/$defs/RecordSigintTelemetry" },
+    { "$ref": "#/$defs/ProposeRelationship" },
+    { "$ref": "#/$defs/CheckOpsec" }
+  ],
+  "$defs": {
+    "Sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "Admiralty": { "type": "string", "pattern": "^[A-F][1-6]$" },
+    "Tlp": { "enum": ["TLP:RED", "TLP:AMBER+STRICT", "TLP:AMBER", "TLP:GREEN", "TLP:CLEAR"] },
+    "Discipline": { "enum": ["OSINT", "SOCMINT", "SIGINT", "HUMINT", "TECHINT", "FININT", "GEOINT", "MIXED"] },
+    "ObservableType": {
+      "enum": [
+        "ACCOUNT_ID", "USERNAME", "DISPLAY_NAME", "PHONE_E164", "EMAIL",
+        "WALLET", "DOMAIN", "IPV4", "IPV6", "URL", "MAC_ADDRESS",
+        "IMSI", "IMEI", "ICCID", "MSISDN", "DEVICE_FINGERPRINT",
+        "TELEGRAM_ID", "X_USER_ID", "DISCORD_ID", "SIGNAL_ID",
+        "COORDINATE", "OTHER"
+      ]
+    },
+    "AgentId": { "enum": ["HERMES", "ARACNE", "ARGOS"] },
+    "GeoPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lat", "lon"],
+      "properties": {
+        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+        "lon": { "type": "number", "minimum": -180, "maximum": 180 },
+        "accuracy_m": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "EvidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "payload_sha256", "captured_at", "tlp"],
+      "properties": {
+        "evidence_id": { "type": "string", "format": "uuid" },
+        "payload_sha256": { "$ref": "#/$defs/Sha256" },
+        "captured_at": { "type": "string", "format": "date-time" },
+        "tlp": { "$ref": "#/$defs/Tlp" }
+      }
+    },
+    "SourceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "uri", "source_type", "legal_basis"],
+      "properties": {
+        "platform": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "uri": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "source_type": { "enum": ["OSINT", "SOCMINT", "SIGINT", "HUMINT", "MANUAL", "PUBLIC_REGISTRY", "LEGACY"] },
+        "collection_method": { "type": ["string", "null"], "maxLength": 256 },
+        "legal_basis": { "type": "string", "minLength": 8, "maxLength": 1024 }
+      }
+    },
+    "AliasInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alias_type", "value", "observed_from"],
+      "properties": {
+        "alias_type": { "enum": ["HANDLE", "DISPLAY_NAME", "PHONE", "EMAIL", "WALLET", "URL", "ACCOUNT_ID", "DEVICE_ID", "OTHER"] },
+        "value": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "platform": { "type": ["string", "null"], "maxLength": 128 },
+        "observed_from": { "type": "string", "format": "date-time" },
+        "observed_until": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "Envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_call_id", "agent_id", "run_id", "mission_id", "tool_name", "arguments"],
+      "properties": {
+        "tool_call_id": { "type": "string", "format": "uuid" },
+        "agent_id": { "$ref": "#/$defs/AgentId" },
+        "run_id": { "type": "string", "format": "uuid" },
+        "mission_id": { "type": "string", "format": "uuid" },
+        "tool_name": { "enum": ["search_existing_entities", "ingest_multi_int_observable", "record_sigint_telemetry", "propose_relationship", "check_opsec"] },
+        "arguments": { "type": "object" },
+        "requested_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SearchExistingEntities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_call_id", "agent_id", "run_id", "mission_id", "query"],
+      "properties": {
+        "tool_call_id": { "type": "string", "format": "uuid" },
+        "agent_id": { "$ref": "#/$defs/AgentId" },
+        "run_id": { "type": "string", "format": "uuid" },
+        "mission_id": { "type": "string", "format": "uuid" },
+        "query": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "selector": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["observable_type", "value"],
+              "properties": {
+                "observable_type": { "$ref": "#/$defs/ObservableType" },
+                "value": { "type": "string", "minLength": 1, "maxLength": 4096 }
+              }
+            },
+            "name": { "type": "string", "minLength": 1, "maxLength": 512 },
+            "text": { "type": "string", "minLength": 2, "maxLength": 4096 }
+          },
+          "anyOf": [
+            { "required": ["selector"] },
+            { "required": ["name"] },
+            { "required": ["text"] }
+          ]
+        },
+        "disciplines": { "type": "array", "items": { "$ref": "#/$defs/Discipline" }, "uniqueItems": true, "default": [] },
+        "min_score": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.35 },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 },
+        "as_of": { "type": "string", "format": "date-time" }
+      }
+    },
+    "IngestMultiIntObservable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_call_id", "agent_id", "run_id", "mission_id", "pir_id", "discipline", "observable_type", "value", "observed_at", "source", "evidence", "tlp", "admiralty", "idempotency_key"],
+      "properties": {
+        "tool_call_id": { "type": "string", "format": "uuid" },
+        "agent_id": { "$ref": "#/$defs/AgentId" },
+        "run_id": { "type": "string", "format": "uuid" },
+        "mission_id": { "type": "string", "format": "uuid" },
+        "pir_id": { "type": "string", "format": "uuid" },
+        "discipline": { "$ref": "#/$defs/Discipline" },
+        "observable_type": { "$ref": "#/$defs/ObservableType" },
+        "value": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "normalized_value": { "type": ["string", "null"], "maxLength": 4096 },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "source": { "$ref": "#/$defs/SourceRef" },
+        "evidence": { "$ref": "#/$defs/EvidenceRef" },
+        "tlp": { "$ref": "#/$defs/Tlp" },
+        "admiralty": { "$ref": "#/$defs/Admiralty" },
+        "confidence_hint": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "aliases": { "type": "array", "items": { "$ref": "#/$defs/AliasInput" }, "maxItems": 100, "default": [] },
+        "attributes": { "type": "object", "default": {} },
+        "idempotency_key": { "$ref": "#/$defs/Sha256" }
+      }
+    },
+    "RecordSigintTelemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_call_id", "agent_id", "run_id", "mission_id", "pir_id", "event_type", "selector", "observed_at", "evidence", "admiralty", "tlp", "idempotency_key"],
+      "properties": {
+        "tool_call_id": { "type": "string", "format": "uuid" },
+        "agent_id": { "$ref": "#/$defs/AgentId" },
+        "run_id": { "type": "string", "format": "uuid" },
+        "mission_id": { "type": "string", "format": "uuid" },
+        "pir_id": { "type": "string", "format": "uuid" },
+        "event_type": { "enum": ["RF_EMISSION", "IMSI_ATTACH", "MAC_OBSERVATION", "CALL", "SMS"] },
+        "selector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["observable_type", "value"],
+          "properties": {
+            "observable_type": { "enum": ["IMSI", "IMEI", "ICCID", "MSISDN", "MAC_ADDRESS", "DEVICE_FINGERPRINT", "COORDINATE", "OTHER"] },
+            "value": { "type": "string", "minLength": 1, "maxLength": 512 }
+          }
+        },
+        "frequency_hz": { "type": ["number", "null"], "minimum": 0 },
+        "bandwidth_hz": { "type": ["number", "null"], "minimum": 0 },
+        "modulation": { "type": ["string", "null"], "maxLength": 64 },
+        "duration_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "location": { "oneOf": [{ "$ref": "#/$defs/GeoPoint" }, { "type": "null" }] },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "device_fingerprint": { "type": ["string", "null"], "maxLength": 512 },
+        "evidence": { "$ref": "#/$defs/EvidenceRef" },
+        "admiralty": { "$ref": "#/$defs/Admiralty" },
+        "tlp": { "$ref": "#/$defs/Tlp" },
+        "attributes": { "type": "object", "default": {} },
+        "idempotency_key": { "$ref": "#/$defs/Sha256" }
+      }
+    },
+    "ProposeRelationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_call_id", "agent_id", "run_id", "mission_id", "source_entity_id", "target_entity_id", "relationship_type", "discipline", "valid_from", "admiralty", "confidence_hint", "evidence_ids", "tlp", "idempotency_key"],
+      "properties": {
+        "tool_call_id": { "type": "string", "format": "uuid" },
+        "agent_id": { "$ref": "#/$defs/AgentId" },
+        "run_id": { "type": "string", "format": "uuid" },
+        "mission_id": { "type": "string", "format": "uuid" },
+        "source_entity_id": { "type": "string", "format": "uuid" },
+        "target_entity_id": { "type": "string", "format": "uuid" },
+        "relationship_type": { "enum": ["CONTROLS_ACCOUNT", "COMMUNICATES_WITH", "FINANCED_BY", "LOCATED_AT", "ALIAS_OF", "AFFILIATED_WITH", "MEMBER_OF", "OWNS", "USES", "TARGETS", "PARTICIPATED_IN", "OBSERVED_AT", "MENTIONS", "RELATED_TO"] },
+        "discipline": { "$ref": "#/$defs/Discipline" },
+        "valid_from": { "type": "string", "format": "date-time" },
+        "valid_until": { "type": ["string", "null"], "format": "date-time" },
+        "event_id": { "type": ["string", "null"], "format": "uuid" },
+        "admiralty": { "$ref": "#/$defs/Admiralty" },
+        "confidence_hint": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence_ids": { "type": "array", "items": { "type": "string", "format": "uuid" }, "minItems": 1, "maxItems": 50, "uniqueItems": true },
+        "tlp": { "$ref": "#/$defs/Tlp" },
+        "properties": { "type": "object", "default": {} },
+        "idempotency_key": { "$ref": "#/$defs/Sha256" }
+      }
+    },
+    "CheckOpsec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_call_id", "agent_id", "run_id", "mission_id", "sockpuppet_id", "interaction_id", "action"],
+      "properties": {
+        "tool_call_id": { "type": "string", "format": "uuid" },
+        "agent_id": { "const": "HERMES" },
+        "run_id": { "type": "string", "format": "uuid" },
+        "mission_id": { "type": "string", "format": "uuid" },
+        "sockpuppet_id": { "type": "string", "format": "uuid" },
+        "interaction_id": { "type": "string", "format": "uuid" },
+        "action": { "enum": ["SEND_MESSAGE", "JOIN_CHANNEL", "PROFILE_VIEW", "CALL", "OTHER"] }
+      }
+    },
+    "ToolResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_call_id", "status"],
+      "properties": {
+        "tool_call_id": { "type": "string", "format": "uuid" },
+        "status": { "enum": ["OK", "STAGED", "DUPLICATE", "NEEDS_REVIEW", "REJECTED", "ABORTED", "ERROR"] },
+        "data": { "type": "object" },
+        "proposal_id": { "type": ["string", "null"], "format": "uuid" },
+        "evidence_id": { "type": ["string", "null"], "format": "uuid" },
+        "entity_id": { "type": ["string", "null"], "format": "uuid" },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entity_id", "score", "reason"],
+            "properties": {
+              "entity_id": { "type": "string", "format": "uuid" },
+              "canonical_name": { "type": "string" },
+              "score": { "type": "number", "minimum": 0, "maximum": 1 },
+              "reason": { "enum": ["EXACT_SELECTOR", "ALIAS_HISTORY", "TRIGRAM", "EMBEDDING", "HUMAN"] }
+            }
+          }
+        },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "error": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["code", "message", "retryable"],
+          "properties": {
+            "code": { "type": "string" },
+            "message": { "type": "string" },
+            "retryable": { "type": "boolean" },
+            "details": { "type": "object" }
+          }
+        }
+      }
+    }
+  }
+}

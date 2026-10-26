@@ -4,7 +4,41 @@
 > `/contracts` está congelado:** el código que lo contradiga se corrige, o se
 > abre una nueva spec y un nuevo sello. No se edita en silencio.
 
-## Sello vigente — v2.2.0 (2026-10-17)
+## Sello v3.1.0 (2026-10-26) — PROVISIONAL, PENDIENTE DE TESTCONTAINERS
+
+**Sellado por:** Agente 0 (Director de Arquitectura / Orquestador SDD)
+**Autorizado por:** aprobación humana de `SPEC-01`…`SPEC-04` v3.1 (2026-10-26)
+**Evidencia de validación:** `bash scripts/validate-contracts.sh` → `ExitCode=0`
+(5/5 checks). **Limitación declarada:** este entorno no tiene Docker; el DDL no
+se ha aplicado aún a PostgreSQL 16 + PostGIS 3.4 + pgvector. El sello queda
+provisional hasta que pasen `apps/backend/tests/v3/db/` con Testcontainers.
+
+| Contrato | Versión | SHA-256 |
+| :--- | :--- | :--- |
+| `openapi.yaml` | **v3.1.0** | `f16fbe714c7bbd4ae1a643654956a585f00bbb38c0ed0335190513c248920307` |
+| `v3/hermes-tools.json` | **v3.1.0** | `7b93ff8f58832b951aea187d4d8afde962fc9e91b5af41c9db5fad39bbed9f78` |
+| `v3/db-contract-v3.1.sql` | **v3.1.0** | `1c93f1fcf20ab51808825ddfd4997ab8268e94372a4b241888223a635fca4914` |
+| `v3/agent-contracts.json` | v3.0.0 (sin cambios) | `6b10056d7c88feff77a03ebf7d1ed2a673ecfaeca6bdbb8f577c1ba93f87d90f` |
+| `graph-constraints.cypher` | v2.1.0 (sin cambios) | `43ecd30a0529fdfcdfc2bd37b2b378688e53cac51c549c74194a310b04b57363` |
+| `extraction-schema.json` | v2.0.0 (sin cambios) | `7f66c7d866b29bfdab2c762a09b2642f7055716a872c8717a8fc52203050e7f8` |
+
+### Cambios v2.2.0 → v3.1.0
+- `openapi.yaml`: **38** `operationId` (37 HTTP + WebSocket). Nueve rutas v3.1:
+  `POST /graph/subgraph`, `POST /correlation/colocation`,
+  `POST /analytics/alias-evasion`, `GET /proposals`, `GET /proposals/{id}`,
+  `POST /proposals/{id}/approve`, `POST /proposals/{id}/reject`,
+  `GET /evidence/{id}` y `GET /evidence/{id}/verify`.
+- `v3/hermes-tools.json`: cinco tools con `additionalProperties=false`,
+  selectores y evidencias validadas; cualquier tool fuera de la allowlist se
+  rechaza antes de tocar la base.
+- `v3/db-contract-v3.1.sql`: capas `core_entities`/`observables`/eventos,
+  `raw_evidence_vault` append-only, `agent_proposals` con `version` para
+  bloqueo optimista, PostGIS + pgvector, RLS/TLP y vistas de compatibilidad
+  v3.0. La migración (`migrations/v3.1/0001_schema.sql`) es byte a byte igual.
+- `graph-constraints.cypher`, `extraction-schema.json` y
+  `v3/agent-contracts.json`: sin cambios.
+
+## Sello anterior — v2.2.0 (2026-10-17)
 
 **Sellado por:** Agente 0 (Director de Arquitectura / Orquestador SDD)
 **Autorizado por:** SPEC-04 §2/§2.1 v2.2 · SPEC-06 §1.3
@@ -45,6 +79,7 @@
 | 2026-10-17 | v2.0.0 | Nodos analíticos + coherencia Humano-IA + M2M | Arquitectura SDD v2.0 | Agente 0 |
 | 2026-10-17 | v2.1.0 | `GET /analyses` + `GET /analyses/{id}/requirements` + vector index por label | Mejora H-5 y corrección de contrato | Agente 0 |
 | 2026-10-17 | v2.2.0 | `429` en login, JWT ≤ 15 min, patrón TOTP, `X-Request-ID` | Auditoría SDD v2.2 (SPEC-04 v2.2, SPEC-06) | Agente 0 |
+| 2026-10-26 | v3.1.0 | 9 rutas multi-INT/evidencia/propuestas, `hermes-tools.json`, DDL v3.1 | Cierre AUD-23/SPEC-01..04 | Agente 0 (provisional) |
 
 ## Cómo re-sellar
 1. Verificar que el cambio traza a una spec y que hay aprobación humana.

@@ -1,10 +1,29 @@
 # TASKS — Plan de Implementación SDD v3.1 (Multi-INT)
 
-> **Estado: PROPUESTA — no ejecutar hasta aprobación de `00-AUDIT.md`, `SPEC-01`…`SPEC-04`.**
+> **Estado: EN EJECUCIÓN v3.1 (2026-10-26).**
 > Este archivo es el plan de tareas; **no** es código ni autorización implícita.
 > Baseline: `main` post-Hito 1 · Fecha: 2026-10-26 · Autor: Agente 0 (Gobernanza SDD).
 
 ---
+
+## 0.0 Estado de implementación (2026-10-26)
+
+> Esta tabla resume qué partes del plan tienen evidencia verificable. No se
+> marca `[x]` una tarea cuyo test de aceptación requiera PostgreSQL/PostGIS y
+> sólo se haya ejecutado con dobles. Los `skip` de Testcontainers impiden el
+> cierre del hito.
+
+| Bloque | Tareas | Estado | Evidencia / límite |
+|---|---|---|---|
+| Contratos y sello | TASK-03, TASK-17, TASK-33 | Hecho (sello provisional) | `bash scripts/validate-contracts.sh` 5/5; `python scripts/audit_sdd.py` 15/15; 38 `operationId` |
+| Esquema y custodia | TASK-05…TASK-10, TASK-12, TASK-13 | Implementado en DDL + servicios | `pglast` parse OK; tests de servicios v3.1; falta aplicar a PostgreSQL real |
+| Migración y RLS runtime | TASK-02, TASK-04, TASK-14, TASK-15 | Bloqueado | No hay Docker/daemon en este entorno; Testcontainers sigue en `skip` |
+| Harness Hermes | TASK-16…TASK-20, TASK-22 | Hecho | `apps/agents/hermes/tests` 10 passed; gateway con allowlist, idempotencia y OPSEC fail-closed |
+| Correlación y API | TASK-27, TASK-29, TASK-31, TASK-34 | Hecho | 16 tests de servicios + 14 tests HTTP v3.1; RBAC/TLP/máscara |
+| UI interactiva | TASK-35…TASK-39 | Hecho parcial | Cliente tipado, subgrafo, mapa MapLibre, timeline, inspector y bandeja; 76 tests frontend; faltan E2E y páginas dedicadas `/missions` y `/events/:id` |
+| E2E y accesibilidad | TASK-40, TASK-41 | Pendiente | Sin Playwright ejecutado; no se declara WCAG 2.2 AA |
+| Dual-write / ETL / cutover | TASK-42…TASK-44 | Pendiente | No implementado; Neo4j sigue siendo el grafo operativo |
+| Observabilidad y cierre | TASK-26, TASK-45…TASK-48 | Pendiente / provisional | Sello v3.1 marcado provisional en `contracts/SEAL.md` |
 
 ## 0. Reglas de ejecución
 
@@ -303,7 +322,7 @@
 - **Prioridad:** P0 · **Owner:** Agente 3 + Agente 0
 - **Depende de:** TASK-27–TASK-31
 - **Archivos:** `contracts/openapi.yaml`, `apps/frontend/src/types/api.d.ts`, `apps/backend/tests/v3/contracts/test_openapi.py`
-- **Acción:** 5 operaciones nuevas; schemas; errores; ejemplos; `npm run gen:api`.
+- **Acción:** 9 operaciones nuevas (38 `operationId` totales); schemas; errores; ejemplos; `npm run gen:api`.
 - **Test:** `pytest tests/v3/contracts/test_openapi.py -q`; `npm run gen:api`.
 - **Criterio:** contrato y UI compilan; no `any`.
 
@@ -338,7 +357,7 @@
 ### TASK-37 · Bandeja de aprobación
 - **Prioridad:** P0 · **Owner:** Agente 4
 - **Depende de:** TASK-20, TASK-35
-- **Archivos:** `apps/frontend/src/components/approvals/ApprovalInbox.tsx`, `ProposalDiff.tsx`, `src/app/approvals/page.tsx`
+- **Archivos:** `apps/frontend/src/components/proposals/ApprovalInbox.tsx`, `ProposalDiff.tsx`, `src/app/approvals/page.tsx`
 - **Acción:** lista, diff, evidencia, aprobar/rechazar, motivo, versión, SSE, estados.
 - **Test:** `npm test -- --run`; `npx playwright test approvals.spec.ts`.
 - **Criterio:** no “aprobar todo”; rechazo exige motivo; `409` manejado.
@@ -346,7 +365,7 @@
 ### TASK-38 · Mapa-tiempo y `as_of`
 - **Prioridad:** P0 · **Owner:** Agente 4
 - **Depende de:** TASK-27, TASK-35
-- **Archivos:** `apps/frontend/src/components/map/SpatioTemporalMap.tsx`, `Timeline.tsx`, `src/app/map/page.tsx`
+- **Archivos:** `apps/frontend/src/components/map/MultiIntMap.tsx`, `EventTimeline.tsx`, workspace integrado en `src/app/page.tsx`
 - **Acción:** MapLibre, clusters, time brush, colocalización, máscara TLP:RED, tabla accesible.
 - **Test:** `npx playwright test map.spec.ts`; `npm test -- --run`.
 - **Criterio:** sin coordenadas exactas TLP:RED; brush < 100 ms; sin tiles públicos sensibles.
@@ -533,12 +552,14 @@ Una tarea sólo se marca `[x]` si:
 
 | Fase | Estado |
 |---|---|
-| 0 — Aprobación | **BLOQUEADA** hasta respuesta del usuario |
-| 1 — Datos | No iniciada |
-| 2 — Hermes | No iniciada |
-| 3 — Correlación | No iniciada |
-| 4 — UI | No iniciada |
-| 5 — Dual-write | No iniciada |
-| 6 — Cierre | No iniciada |
+| 0 — Aprobación | **APROBADA** por el usuario el 2026-10-26 |
+| 1 — Datos | Implementado en DDL/servicios; **runtime bloqueado** sin Docker |
+| 2 — Hermes | **Hecho**; 10 tests; gateway con OPSEC fail-closed |
+| 3 — Correlación | **Hecho**; servicios y rutas con TLP/RBAC |
+| 4 — UI | **Parcial**; 6 vistas, 76 tests; faltan E2E y accesibilidad |
+| 5 — Dual-write | **Pendiente**; Neo4j sigue siendo el backend operativo |
+| 6 — Cierre | **Provisional**; sello pendiente de Testcontainers |
 
-**Próxima acción:** revisar `00-AUDIT.md` y este plan; responder “APROBADO” o indicar cambios. **No se escribe código de producción hasta entonces.**
+**Próxima acción:** ejecutar la migración v3.1 y las pruebas de RLS/PostGIS en
+un entorno con Docker; sólo entonces promover el sello provisional y cerrar el
+hito. La tabla `0.0` de este documento es la referencia de estado vigente.

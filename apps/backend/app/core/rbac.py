@@ -195,6 +195,18 @@ ALLOWED_ROLES_BY_OPERATION: dict[str, Optional[FrozenSet[Role]]] = {
     "resolveCoherenceAlert": frozenset({Role.ADMIN, Role.ANALYST}),
     # --- search (SPEC-03 §7) ---
     "searchRag": HUMAN_ROLES,
+    # --- v3.1 correlación y analítica (SPEC-03 §3–§5) ---
+    "findSigintSocmintColocation": HUMAN_ROLES,
+    "getMultiLayerSubgraph": HUMAN_ROLES,
+    "detectAliasEvasion": HUMAN_ROLES,
+    # --- v3.1 propuestas (SPEC-02 §11.5) ---
+    "listProposals": frozenset({Role.ADMIN, Role.ANALYST}),
+    "getProposal": frozenset({Role.ADMIN, Role.ANALYST}),
+    "approveProposal": frozenset({Role.ADMIN, Role.ANALYST}),
+    "rejectProposal": frozenset({Role.ADMIN, Role.ANALYST}),
+    # --- v3.1 evidencia (SPEC-04 inspector) ---
+    "getEvidence": HUMAN_ROLES,
+    "verifyEvidence": frozenset({Role.ADMIN, Role.ANALYST}),
     # --- system (contrato v1.1.0) ---
     "getInfo": None,  # público
 }
@@ -275,6 +287,51 @@ ENDPOINT_MATRIX: tuple[tuple[str, str, str, Optional[Permission]], ...] = (
         Permission.COHERENCE_RESOLVE,
     ),
     ("POST", "/api/v1/search/rag", "searchRag", Permission.GRAPH_READ),
+    # --- v3.1 ---
+    (
+        "POST",
+        "/api/v1/correlation/colocation",
+        "findSigintSocmintColocation",
+        Permission.GRAPH_READ,
+    ),
+    (
+        "POST",
+        "/api/v1/graph/subgraph",
+        "getMultiLayerSubgraph",
+        Permission.GRAPH_READ,
+    ),
+    (
+        "POST",
+        "/api/v1/analytics/alias-evasion",
+        "detectAliasEvasion",
+        Permission.GRAPH_READ,
+    ),
+    ("GET", "/api/v1/proposals", "listProposals", Permission.COHERENCE_RESOLVE),
+    (
+        "GET",
+        "/api/v1/proposals/{proposal_id}",
+        "getProposal",
+        Permission.COHERENCE_RESOLVE,
+    ),
+    (
+        "POST",
+        "/api/v1/proposals/{proposal_id}/approve",
+        "approveProposal",
+        Permission.COHERENCE_RESOLVE,
+    ),
+    (
+        "POST",
+        "/api/v1/proposals/{proposal_id}/reject",
+        "rejectProposal",
+        Permission.COHERENCE_RESOLVE,
+    ),
+    ("GET", "/api/v1/evidence/{evidence_id}", "getEvidence", Permission.GRAPH_READ),
+    (
+        "GET",
+        "/api/v1/evidence/{evidence_id}/verify",
+        "verifyEvidence",
+        Permission.COHERENCE_RESOLVE,
+    ),
     ("GET", "/api/v1/info", "getInfo", None),
 )
 

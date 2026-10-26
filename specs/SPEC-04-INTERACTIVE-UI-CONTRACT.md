@@ -1,6 +1,6 @@
 # SPEC-04 — Contrato de UI Interactiva y Bandeja de Aprobación
 
-> **Estado: DRAFT v0.1.0 — PROPUESTA, no aprobada.**
+> **Estado: APROBADA v3.1 (2026-10-26) — implementación autorizada por el usuario.**
 > Depende de: `SPEC-01-DATA-MODEL.md`, `SPEC-02-HERMES-HARNESS-INGESTION.md`, `SPEC-03-CORRELATION-ENGINE.md`.
 > Aprobador requerido: usuario. Sin aprobación no se modifica `apps/frontend/**` ni `contracts/openapi.yaml`.
 
