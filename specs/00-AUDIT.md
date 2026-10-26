@@ -350,12 +350,12 @@ Brechas de UI:
 | AUD-02 | Verificación de cadena incompleta | Alta | SPEC-01 / TASK-10 |
 | AUD-03 | Colisión de idempotencia silenciosa | Crítica | SPEC-02 / TASK-18 |
 | AUD-04 | Adjuntos sin verificación de hash en DB | Alta | SPEC-01 / TASK-11 |
-| AUD-05 | Sin WORM/object store inmutable | Alta | SPEC-01 / TASK-12 |
+| AUD-05 | Sin WORM/object store inmutable | Alta | SPEC-01 / TASK-11 |
 | AUD-06 | Sin eventos ni evidencia geoespacial | Crítica | SPEC-01 / TASK-07 |
 | AUD-07 | Contrato v3 no sellado/verificado | Crítica | TASKS Fase 0/6 |
 | AUD-08 | Canonicalización no verificada | Media | SPEC-01 / TASK-09 |
 | AUD-09 | Sin gateway de tools | Crítica | SPEC-02 / TASK-16 |
-| AUD-10 | Prompt injection sin aislamiento | Alta | SPEC-02 / TASK-17 |
+| AUD-10 | Prompt injection sin aislamiento | Alta | SPEC-02 / TASK-25 |
 | AUD-11 | Sin selector inmutable | Crítica | SPEC-01/02 / TASK-08, TASK-19 |
 | AUD-12 | Sin `AGENT_STAGED` ni aprobación | Crítica | SPEC-02/04 / TASK-20 |
 | AUD-13 | Dinamismo Cypher/SQL | Baja | TASK-14 |
@@ -363,11 +363,11 @@ Brechas de UI:
 | AUD-15 | Sin rate-limit por agente/tool | Alta | SPEC-02 / TASK-23 |
 | AUD-16 | Sin PostGIS/GiST | Crítica | SPEC-01/03 / TASK-13, TASK-27 |
 | AUD-17 | Sin timeline de eventos | Alta | SPEC-01/03 / TASK-07, TASK-28 |
-| AUD-18 | Índices multi-INT ausentes | Alta | SPEC-01/03 / TASK-29 |
-| AUD-19 | Subgrafo multicapa ausente | Alta | SPEC-03 / TASK-30 |
-| AUD-20 | Colocalización/evasón ausentes | Crítica | SPEC-03 / TASK-31, TASK-32 |
-| AUD-21 | Sin `as_of` | Alta | SPEC-03/04 / TASK-33 |
-| AUD-22 | Sin límites de coste | Media | SPEC-03 / TASK-34 |
+| AUD-18 | Índices multi-INT ausentes | Alta | SPEC-01/03 / TASK-13 |
+| AUD-19 | Subgrafo multicapa ausente | Alta | SPEC-03 / TASK-29 |
+| AUD-20 | Colocalización/evasón ausentes | Crítica | SPEC-03 / TASK-27, TASK-31 |
+| AUD-21 | Sin `as_of` | Alta | SPEC-03/04 / TASK-30, TASK-38 |
+| AUD-22 | Sin límites de coste | Media | SPEC-03 / TASK-32 |
 | AUD-23 | UI sin mapa/aprobación/evidencia | Crítica | SPEC-04 / TASK-36–40 |
 | AUD-24 | Producción sigue en Neo4j | Alto | TASKS Fase 5 |
 
