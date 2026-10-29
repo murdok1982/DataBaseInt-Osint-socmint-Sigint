@@ -13,8 +13,10 @@ import type { Evidence, EvidenceVerification } from "@/services/api";
 
 import EvidenceInspector from "./EvidenceInspector";
 
+const EVIDENCE_ID = "44444444-4444-4444-4444-444444444444";
+
 const EVIDENCE = {
-  evidence_id: "44444444-4444-4444-4444-444444444444",
+  evidence_id: EVIDENCE_ID,
   payload_sha256: "a".repeat(64),
   tlp: "TLP:AMBER",
   collector_agent: "HERMES",
@@ -49,9 +51,9 @@ describe("EvidenceInspector", () => {
     vi.spyOn(api, "getEvidence").mockResolvedValue(EVIDENCE);
     const verify = vi.spyOn(api, "verifyEvidence").mockResolvedValue(VALID);
 
-    render(<EvidenceInspector evidenceId={EVIDENCE.evidence_id} canVerify />);
+    render(<EvidenceInspector evidenceId={EVIDENCE_ID} canVerify />);
 
-    expect((await screen.findAllByText(EVIDENCE.evidence_id)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(EVIDENCE_ID)).length).toBeGreaterThan(0);
     expect(screen.queryByText("Evidencia íntegra y encadenada")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Verificar" }));
@@ -64,7 +66,7 @@ describe("EvidenceInspector", () => {
     vi.spyOn(api, "getEvidence").mockResolvedValue(EVIDENCE);
     vi.spyOn(api, "verifyEvidence").mockResolvedValue(BROKEN);
 
-    render(<EvidenceInspector evidenceId={EVIDENCE.evidence_id} canVerify />);
+    render(<EvidenceInspector evidenceId={EVIDENCE_ID} canVerify />);
     fireEvent.click(await screen.findByRole("button", { name: "Verificar" }));
 
     const alert = await screen.findByRole("alert");
