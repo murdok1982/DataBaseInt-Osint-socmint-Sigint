@@ -160,9 +160,9 @@ export default function ApprovalInbox({
             Recargar
           </button>
         </div>
-        {loading && <p className="text-xs text-slate-500">Cargando…</p>}
+        {loading && <p className="text-xs text-slate-400">Cargando…</p>}
         {!loading && proposals.length === 0 && (
-          <p className="text-xs text-slate-500">No hay propuestas pendientes.</p>
+          <p className="text-xs text-slate-400">No hay propuestas pendientes.</p>
         )}
         <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto">
           {proposals.map((proposal) => {
@@ -186,7 +186,7 @@ export default function ApprovalInbox({
                   <span className="block font-semibold">
                     {proposal.proposal_type ?? "PROPOSAL"} · v{proposal.version ?? "?"}
                   </span>
-                  <span className="block font-mono text-[10px] text-slate-500">
+                  <span className="block font-mono text-[10px] text-slate-400">
                     {short(proposal.proposal_id, 16)}
                   </span>
                   <span className="block">{proposal.agent_type ?? "—"}</span>
@@ -204,7 +204,7 @@ export default function ApprovalInbox({
           </p>
         )}
         {!selected ? (
-          <p className="text-xs text-slate-500">Selecciona una propuesta para revisarla.</p>
+          <p className="text-xs text-slate-400">Selecciona una propuesta para revisarla.</p>
         ) : (
           <div className="space-y-4 text-xs text-slate-300">
             <header className="flex flex-wrap items-center justify-between gap-2">
@@ -212,7 +212,7 @@ export default function ApprovalInbox({
                 <h3 className="text-sm font-semibold text-slate-100">
                   {selected.proposal_type ?? "Propuesta"} de {selected.agent_type ?? "agente"}
                 </h3>
-                <p className="font-mono text-[10px] text-slate-500">
+                <p className="font-mono text-[10px] text-slate-400">
                   {selected.proposal_id} · mission {short(selected.mission_id, 18)}
                 </p>
               </div>
@@ -222,13 +222,13 @@ export default function ApprovalInbox({
             </header>
 
             <dl className="grid grid-cols-[130px_1fr] gap-x-3 gap-y-2">
-              <dt className="text-slate-500">Creada</dt>
+              <dt className="text-slate-400">Creada</dt>
               <dd>{fmt(selected.created_at)}</dd>
-              <dt className="text-slate-500">Confianza</dt>
+              <dt className="text-slate-400">Confianza</dt>
               <dd>{selected.confidence ?? "—"}</dd>
-              <dt className="text-slate-500">Entidad destino</dt>
+              <dt className="text-slate-400">Entidad destino</dt>
               <dd className="font-mono text-[10px]">{selected.target_entity_id ?? "—"}</dd>
-              <dt className="text-slate-500">Evidencias</dt>
+              <dt className="text-slate-400">Evidencias</dt>
               <dd>{evidenceIds.length}</dd>
             </dl>
 
@@ -255,7 +255,7 @@ export default function ApprovalInbox({
                         <span
                           className={
                             status === "loading"
-                              ? "text-slate-500"
+                              ? "text-slate-400"
                               : ok
                                 ? "text-emerald-400"
                                 : "text-neon-crimson"
@@ -321,12 +321,12 @@ export default function ApprovalInbox({
                   type="button"
                   disabled
                   title="SPEC-GAP-UI-004: crea una tasking_order en una spec posterior"
-                  className="rounded border border-base-700 px-3 py-1 text-xs text-slate-500"
+                  className="rounded border border-base-700 px-3 py-1 text-xs text-slate-400"
                 >
                   Pedir más evidencia
                 </button>
                 {!canDecide && (
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-slate-400">
                     Tu rol sólo puede leer la bandeja.
                   </span>
                 )}

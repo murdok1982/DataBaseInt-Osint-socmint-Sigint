@@ -165,7 +165,7 @@ export default function ReportViewer({
           <p className="mt-1 truncate text-sm font-semibold text-slate-100">
             {report?.title ?? "Informe original"}
           </p>
-          <p className="truncate font-mono text-[11px] text-slate-500">
+          <p className="truncate font-mono text-[11px] text-slate-400">
             {reportId} · pág. {targetPage}
             {report?.source_type ? ` · ${REPORT_SOURCE_LABEL[report.source_type]}` : ""}
             {report?.reliability_rating ? ` · fiabilidad ${report.reliability_rating}` : ""}
@@ -221,7 +221,7 @@ export default function ReportViewer({
             {needle ? (
               evidence ? (
                 <>
-                  <p className="mb-2 text-[11px] uppercase tracking-widest text-slate-500">
+                  <p className="mb-2 text-[11px] uppercase tracking-widest text-slate-400">
                     Evidencia · pág. {evidence.chunk.page_number ?? "—"}
                     {typeof evidence.chunk.char_start === "number" &&
                       ` · [${evidence.chunk.char_start}:${evidence.chunk.char_end ?? "?"}]`}

@@ -70,7 +70,7 @@ export default function LoginPage(): ReactElement {
             OSINT Nexus
           </h1>
         </div>
-        <p className="mb-4 text-xs text-slate-500">
+        <p className="mb-4 text-xs text-slate-400">
           Acceso restringido a operadores autorizados · SPEC-04
         </p>
 

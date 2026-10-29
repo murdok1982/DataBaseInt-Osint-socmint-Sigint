@@ -198,7 +198,7 @@ export default function MultiIntMap({
     <div className={`relative ${heightClassName} overflow-hidden rounded border border-base-700`}>
       <div ref={containerRef} className="h-full w-full" aria-label="Mapa de eventos multi-INT" />
       {!ready && !error && (
-        <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-slate-500">
+        <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-slate-400">
           Cargando mapa…
         </p>
       )}
@@ -208,7 +208,7 @@ export default function MultiIntMap({
         </p>
       )}
       {points.length === 0 && ready && (
-        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-[10px] text-slate-500">
+        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-[10px] text-slate-400">
           Sin puntos georreferenciados en esta consulta.
         </p>
       )}

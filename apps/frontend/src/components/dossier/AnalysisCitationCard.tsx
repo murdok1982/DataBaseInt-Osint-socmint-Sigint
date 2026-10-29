@@ -35,7 +35,7 @@ export default function AnalysisCitationCard({
         </blockquote>
       )}
       {note && <p className="mt-1 text-xs text-slate-400">{note}</p>}
-      <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+      <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
         <span className="font-mono">{analysisId}</span>
         {onOpenAnalysis && (
           <button

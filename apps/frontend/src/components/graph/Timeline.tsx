@@ -50,7 +50,7 @@ export default function Timeline({
     >
       <div className="flex items-center justify-between text-xs text-slate-400">
         <span className="font-semibold uppercase tracking-widest">Línea temporal</span>
-        <span className="font-mono text-slate-500">
+        <span className="font-mono text-slate-400">
           {minTime > 0 ? min.slice(0, 10) : "—"} → {maxTime > 0 ? max.slice(0, 10) : "—"}
         </span>
       </div>

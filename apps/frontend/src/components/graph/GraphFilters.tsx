@@ -123,12 +123,12 @@ export default function GraphFilters({
         />
       </label>
 
-      <p className="text-[10px] uppercase tracking-widest text-slate-600">
+      <p className="text-[10px] uppercase tracking-widest text-slate-400">
         {ENTITY_LABELS.length} labels del contrato
       </p>
 
       {typeof resultCount === "number" && (
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-slate-400">
           {resultCount} nodo{resultCount === 1 ? "" : "s"} en pantalla
         </p>
       )}

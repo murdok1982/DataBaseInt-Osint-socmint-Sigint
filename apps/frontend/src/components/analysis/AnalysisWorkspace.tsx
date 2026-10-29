@@ -291,7 +291,7 @@ export default function AnalysisWorkspace({
         </header>
 
         {options.length === 0 ? (
-          <p className="text-xs text-slate-500">No hay expedientes analíticos en el grafo.</p>
+          <p className="text-xs text-slate-400">No hay expedientes analíticos en el grafo.</p>
         ) : (
           <ul className="flex flex-col gap-1">
             {options.map((option) => (
@@ -378,7 +378,7 @@ export default function AnalysisWorkspace({
         )}
 
         {!selectedId ? (
-          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-base-700 text-center text-sm text-slate-500">
+          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-base-700 text-center text-sm text-slate-400">
             Selecciona un expediente o crea uno nuevo.
           </div>
         ) : loading || !analysis ? (
@@ -390,7 +390,7 @@ export default function AnalysisWorkspace({
             <article className="rounded-lg border border-base-700 bg-base-900/70 p-4">
               <header className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-mono text-[11px] text-slate-500">{analysis.code ?? "—"}</p>
+                  <p className="font-mono text-[11px] text-slate-400">{analysis.code ?? "—"}</p>
                   <h2 className="truncate text-lg font-semibold text-slate-100">
                     {analysis.title ?? "Sin título"}
                   </h2>
@@ -413,7 +413,7 @@ export default function AnalysisWorkspace({
 
               {typeof coherence === "number" && (
                 <div className="mt-3">
-                  <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-500">
+                  <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-400">
                     coherence_score
                   </p>
                   <div className="flex items-center gap-2">
@@ -463,7 +463,7 @@ export default function AnalysisWorkspace({
                       onChange={(event) => setDraftConclusion(event.target.value)}
                       className="rounded border border-base-600 bg-base-950 px-2 py-1 text-sm text-slate-100 focus:border-neon-violet focus:outline-none"
                     />
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-slate-400">
                       La IA nunca sobrescribe la conclusión (Regla 7).
                     </span>
                   </label>
@@ -501,13 +501,13 @@ export default function AnalysisWorkspace({
               ) : (
                 <div className="mt-3 flex flex-col gap-3 text-sm text-slate-300">
                   <div>
-                    <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-500">
+                    <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-400">
                       Tesis
                     </p>
                     <p className="whitespace-pre-wrap">{analysis.thesis_summary ?? "—"}</p>
                   </div>
                   <div>
-                    <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-500">
+                    <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-400">
                       Conclusión
                     </p>
                     <p className="whitespace-pre-wrap">{analysis.conclusion_body ?? "—"}</p>
@@ -535,7 +535,7 @@ export default function AnalysisWorkspace({
               </header>
 
               {requirements.length === 0 ? (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-400">
                   Sin RFIs creados en esta sesión para este expediente.
                 </p>
               ) : (
@@ -564,7 +564,7 @@ export default function AnalysisWorkspace({
 
               {openRfis && (
                 <div className="mb-3 rounded border border-base-700 bg-base-950/40 p-2">
-                  <p className="mb-1 text-[10px] uppercase tracking-widest text-slate-500">
+                  <p className="mb-1 text-[10px] uppercase tracking-widest text-slate-400">
                     RFIs abiertos (preflight global · {openRfis.length})
                   </p>
                   <ul className="flex flex-col gap-1">
@@ -581,7 +581,7 @@ export default function AnalysisWorkspace({
                       </li>
                     ))}
                   </ul>
-                  <p className="mt-1 text-[10px] text-slate-600">
+                  <p className="mt-1 text-[10px] text-slate-400">
                     SPEC-GAP-4: el contrato v2.0.0 no expone un GET para listar los
                     requerimientos de un expediente (solo POST de creación).
                   </p>
@@ -647,7 +647,7 @@ export default function AnalysisWorkspace({
                 Evidencias ({evidence.length})
               </h3>
               {evidence.length === 0 ? (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-400">
                   Sin evidencias enlazadas a este expediente.
                 </p>
               ) : (
@@ -669,14 +669,14 @@ export default function AnalysisWorkspace({
                         >
                           {edgeDisplay(edge.type)}
                         </span>
-                        <span className="font-mono text-[10px] text-slate-500">
+                        <span className="font-mono text-[10px] text-slate-400">
                           conf. {edge.confidence.toFixed(2)}
                         </span>
                       </div>
                       <blockquote className="mt-1 border-l-2 border-base-600 pl-2 text-[11px] italic text-slate-400">
                         “{edge.exact_quote}”
                       </blockquote>
-                      <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+                      <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
                         <span className="font-mono">
                           informe {edge.source_report_id.slice(0, 8)}… · pág. {edge.page_number}
                         </span>

@@ -156,7 +156,7 @@ export default function SearchConsole({
 
                 {exchange.response.citations.length > 0 ? (
                   <div className="mt-2">
-                    <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-500">
+                    <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-400">
                       Citas de evidencia ({exchange.response.citations.length})
                     </p>
                     <ul className="flex flex-col gap-1.5">
@@ -184,7 +184,7 @@ export default function SearchConsole({
                             <blockquote className="border-l-2 border-base-600 pl-2 italic text-slate-400">
                               “{citation.exact_quote}”
                             </blockquote>
-                            <div className="mt-1 flex items-center justify-between text-slate-500">
+                            <div className="mt-1 flex items-center justify-between text-slate-400">
                               <span className="font-mono">
                                 {isReport
                                   ? `${citation.report_id?.slice(0, 8)}… · pág. ${citation.page_number ?? "—"}`
@@ -224,7 +224,7 @@ export default function SearchConsole({
                     </ul>
                   </div>
                 ) : (
-                  <p className="mt-2 text-[11px] text-slate-500">
+                  <p className="mt-2 text-[11px] text-slate-400">
                     Sin evidencia citada (respuesta de no-evidencia, SPEC-03 §8).
                   </p>
                 )}

@@ -94,7 +94,7 @@ export default function DossierPanel({
 
   if (!node) {
     return (
-      <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-base-700 text-center text-sm text-slate-500">
+      <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-base-700 text-center text-sm text-slate-400">
         Selecciona una entidad en el grafo para abrir su dossier.
       </div>
     );
@@ -188,7 +188,7 @@ export default function DossierPanel({
             <h2 className="mt-1 truncate text-lg font-semibold text-slate-100">
               {node.canonical_name ?? "Sin nombre canónico"}
             </h2>
-            <p className="truncate font-mono text-[10px] text-slate-500">{node.id}</p>
+            <p className="truncate font-mono text-[10px] text-slate-400">{node.id}</p>
           </div>
           <span
             className={`shrink-0 rounded border px-2 py-0.5 text-[10px] font-semibold uppercase ${
@@ -203,7 +203,7 @@ export default function DossierPanel({
         </header>
 
         <div>
-          <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-500">Risk score</p>
+          <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-400">Risk score</p>
           <div className="h-2 w-full rounded-full bg-base-700" role="presentation">
             <div
               className="h-2 rounded-full"
@@ -218,7 +218,7 @@ export default function DossierPanel({
 
         {(node.aliases ?? []).length > 0 && (
           <div>
-            <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-500">Alias</p>
+            <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-400">Alias</p>
             <ul className="flex flex-wrap gap-1">
               {(node.aliases ?? []).map((alias) => (
                 <li
@@ -233,28 +233,28 @@ export default function DossierPanel({
         )}
 
         <div>
-          <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-500">Propiedades</p>
+          <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-400">Propiedades</p>
           {attributes.length > 0 ? (
             <dl className="flex flex-col gap-1 text-xs">
               {attributes.map(([key, value]) => (
                 <div key={key} className="flex justify-between gap-2 border-b border-base-800 py-1">
-                  <dt className="text-slate-500">{key}</dt>
+                  <dt className="text-slate-400">{key}</dt>
                   <dd className="truncate text-right text-slate-200">{renderAttributeValue(value)}</dd>
                 </div>
               ))}
             </dl>
           ) : (
-            <p className="text-xs text-slate-500">Sin propiedades adicionales.</p>
+            <p className="text-xs text-slate-400">Sin propiedades adicionales.</p>
           )}
         </div>
 
         {/* Análisis que la investigan (INVESTIGATES) — SPEC-05 §3 */}
         <div>
-          <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-500">
+          <p className="mb-1 text-[11px] uppercase tracking-widest text-slate-400">
             Investigada por ({investigations.length})
           </p>
           {investigations.length === 0 ? (
-            <p className="text-xs text-slate-500">Ningún análisis la investiga todavía.</p>
+            <p className="text-xs text-slate-400">Ningún análisis la investiga todavía.</p>
           ) : (
             <ul className="flex flex-col gap-1">
               {investigations.map((edge) => (
@@ -368,11 +368,11 @@ export default function DossierPanel({
         )}
 
         <div className="border-t border-base-700 pt-3">
-          <p className="mb-2 text-[11px] uppercase tracking-widest text-slate-500">
+          <p className="mb-2 text-[11px] uppercase tracking-widest text-slate-400">
             Relaciones ({incidentEdges.length})
           </p>
           {incidentEdges.length === 0 ? (
-            <p className="text-xs text-slate-500">Sin relaciones visibles.</p>
+            <p className="text-xs text-slate-400">Sin relaciones visibles.</p>
           ) : (
             <ul className="flex flex-col gap-2">
               {incidentEdges.map((edge) => {
@@ -383,7 +383,7 @@ export default function DossierPanel({
                     <p className="text-slate-300">
                       <span className="text-neon-cyan">{outgoing ? "→" : "←"}</span>{" "}
                       {edgeDisplay(edge.type)}{" "}
-                      <span className="font-mono text-slate-500">
+                      <span className="font-mono text-slate-400">
                         {counterpart.slice(0, 8)}… · conf. {edge.confidence.toFixed(2)}
                       </span>
                     </p>
@@ -392,7 +392,7 @@ export default function DossierPanel({
                         “{edge.exact_quote}”
                       </blockquote>
                     )}
-                    <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+                    <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
                       <span>
                         {formatDate(edge.first_seen)} → {formatDate(edge.last_seen)}
                       </span>
@@ -428,7 +428,7 @@ export default function DossierPanel({
             onOpenAnalysis={onOpenAnalysis}
           />
         ) : (
-          <div className="flex h-full items-center justify-center rounded-md border border-dashed border-base-700 px-4 text-center text-sm text-slate-500">
+          <div className="flex h-full items-center justify-center rounded-md border border-dashed border-base-700 px-4 text-center text-sm text-slate-400">
             Selecciona «Ver informe origen» (cita OSINT) o «Ver análisis» (cita humana) en una
             relación para inspeccionar su evidencia.
           </div>

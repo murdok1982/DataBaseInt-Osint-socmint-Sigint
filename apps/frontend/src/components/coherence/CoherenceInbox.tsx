@@ -161,7 +161,7 @@ export default function CoherenceInbox({
           <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
             Bandeja de coherencia
           </h2>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-slate-400">
             {pendingCount} pendiente{pendingCount === 1 ? "" : "s"} del analista
           </p>
         </div>
@@ -192,7 +192,7 @@ export default function CoherenceInbox({
           Cargando alertas…
         </div>
       ) : alerts.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-base-700 text-center text-sm text-slate-500">
+        <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-base-700 text-center text-sm text-slate-400">
           Sin alertas para el filtro seleccionado.
         </div>
       ) : (
@@ -223,7 +223,7 @@ export default function CoherenceInbox({
                     >
                       {alertType ? ALERT_TYPE_LABEL[alertType] : "Alerta"}
                     </span>
-                    <p className="mt-1 font-mono text-[10px] text-slate-500">
+                    <p className="mt-1 font-mono text-[10px] text-slate-400">
                       {alert.id} · {formatDate(alert.created_at)}
                     </p>
                   </div>
@@ -236,12 +236,12 @@ export default function CoherenceInbox({
 
                 {/* Discrepancia (CONTRADICTION) — sin alterar la tesis (Regla 9) */}
                 <div className="mt-3 rounded border border-base-700 bg-base-950/60 p-3">
-                  <p className="mb-1 text-[10px] uppercase tracking-widest text-slate-500">
+                  <p className="mb-1 text-[10px] uppercase tracking-widest text-slate-400">
                     {isContradiction ? "Discrepancia detectada" : "Descripción"}
                   </p>
                   <p className="text-sm text-slate-200">{alert.description ?? "—"}</p>
                   {isContradiction && (
-                    <p className="mt-2 text-[10px] text-slate-500">
+                    <p className="mt-2 text-[10px] text-slate-400">
                       La tesis y `conclusion_body` del analista permanecen intactos (Regla 9).
                       El `conflict_detail` de la arista `[:CONTRADICTS]` no es consultable vía
                       API (SPEC-GAP-5).

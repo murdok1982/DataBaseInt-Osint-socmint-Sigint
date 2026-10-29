@@ -29,7 +29,7 @@ function fmt(value: string | null | undefined): string {
 }
 
 function Hash({ value }: { value?: string | null }): ReactElement {
-  if (!value) return <span className="text-slate-500">—</span>;
+  if (!value) return <span className="text-slate-400">—</span>;
   return (
     <code className="break-all font-mono text-[10px] text-slate-300" title={value}>
       {value}
@@ -99,7 +99,7 @@ export default function EvidenceInspector({
           <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-200">
             Evidencia
           </h2>
-          <p className="font-mono text-[10px] text-slate-500">{evidenceId}</p>
+          <p className="font-mono text-[10px] text-slate-400">{evidenceId}</p>
         </div>
         <div className="flex items-center gap-2">
           {canVerify && (
@@ -142,23 +142,23 @@ export default function EvidenceInspector({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3 text-xs text-slate-300">
         {loading ? (
-          <p className="text-slate-500">Cargando metadatos…</p>
+          <p className="text-slate-400">Cargando metadatos…</p>
         ) : evidence ? (
           <div className="space-y-4">
             <dl className="grid grid-cols-[130px_1fr] gap-x-3 gap-y-2">
-              <dt className="text-slate-500">evidence_id</dt>
+              <dt className="text-slate-400">evidence_id</dt>
               <dd className="font-mono text-[10px] break-all">{evidence.evidence_id ?? evidenceId}</dd>
-              <dt className="text-slate-500">SHA-256 almacenado</dt>
+              <dt className="text-slate-400">SHA-256 almacenado</dt>
               <dd><Hash value={evidence.payload_sha256} /></dd>
-              <dt className="text-slate-500">TLP</dt>
+              <dt className="text-slate-400">TLP</dt>
               <dd>{evidence.tlp ?? "—"}</dd>
-              <dt className="text-slate-500">Colector</dt>
+              <dt className="text-slate-400">Colector</dt>
               <dd>{evidence.collector_agent ?? "—"}</dd>
-              <dt className="text-slate-500">Fuente</dt>
+              <dt className="text-slate-400">Fuente</dt>
               <dd className="break-all">{evidence.source_type ?? "—"} · {evidence.source_uri ?? "—"}</dd>
-              <dt className="text-slate-500">Capturada</dt>
+              <dt className="text-slate-400">Capturada</dt>
               <dd>{fmt(evidence.captured_at)}</dd>
-              <dt className="text-slate-500">Recibida</dt>
+              <dt className="text-slate-400">Recibida</dt>
               <dd>{fmt(evidence.received_at)}</dd>
             </dl>
 
@@ -184,15 +184,15 @@ export default function EvidenceInspector({
                   {chainValid ? "Evidencia íntegra y encadenada" : "Verificación fallida"}
                 </p>
                 <dl className="grid grid-cols-[130px_1fr] gap-x-3 gap-y-1">
-                  <dt className="text-slate-500">valid</dt>
+                  <dt className="text-slate-400">valid</dt>
                   <dd>{String(verification.valid ?? false)}</dd>
-                  <dt className="text-slate-500">chain_valid</dt>
+                  <dt className="text-slate-400">chain_valid</dt>
                   <dd>{String(verification.chain_valid ?? false)}</dd>
-                  <dt className="text-slate-500">SHA almacenado</dt>
+                  <dt className="text-slate-400">SHA almacenado</dt>
                   <dd><Hash value={verification.stored_sha256} /></dd>
-                  <dt className="text-slate-500">SHA recalculado</dt>
+                  <dt className="text-slate-400">SHA recalculado</dt>
                   <dd><Hash value={verification.computed_sha256} /></dd>
-                  <dt className="text-slate-500">Verificado</dt>
+                  <dt className="text-slate-400">Verificado</dt>
                   <dd>{fmt(verification.checked_at)}</dd>
                 </dl>
               </div>

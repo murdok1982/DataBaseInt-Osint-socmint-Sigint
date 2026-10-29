@@ -69,7 +69,7 @@ export default function MultiLayerGraph({
 
   if (nodes.length === 0) {
     return (
-      <div className="flex h-72 items-center justify-center rounded border border-base-700 bg-base-950/40 text-xs text-slate-500">
+      <div className="flex h-72 items-center justify-center rounded border border-base-700 bg-base-950/40 text-xs text-slate-400">
         Sin nodos para los filtros seleccionados.
       </div>
     );
@@ -182,7 +182,7 @@ export default function MultiLayerGraph({
           })}
         </g>
       </svg>
-      <div className="flex flex-wrap gap-3 border-t border-base-700 px-3 py-1.5 text-[10px] text-slate-500">
+      <div className="flex flex-wrap gap-3 border-t border-base-700 px-3 py-1.5 text-[10px] text-slate-400">
         <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-neon-amber" />SIGINT</span>
         <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-neon-cyan" />SOCMINT</span>
         <span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-400" />OSINT</span>

@@ -44,7 +44,7 @@ export default function EventTimeline({
 
   if (!bounds) {
     return (
-      <div className="rounded border border-base-700 bg-base-950/50 p-3 text-xs text-slate-500">
+      <div className="rounded border border-base-700 bg-base-950/50 p-3 text-xs text-slate-400">
         Sin eventos con fecha en esta consulta.
       </div>
     );
@@ -54,7 +54,7 @@ export default function EventTimeline({
 
   return (
     <div className="rounded border border-base-700 bg-base-950/50 p-3">
-      <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-500">
+      <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-400">
         <span>{new Date(bounds.min).toLocaleString()}</span>
         <span>Timeline de eventos</span>
         <span>{new Date(bounds.max).toLocaleString()}</span>

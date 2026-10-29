@@ -396,7 +396,7 @@ export default function MultiIntWorkspace({
             <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-200">
               Subgrafo multi-capa
             </h2>
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] text-slate-400">
               {nodes.length} nodos · {edges.length} aristas
               {subgraph?.truncated ? " · truncado" : ""}
             </span>
@@ -409,7 +409,7 @@ export default function MultiIntWorkspace({
             truncated={subgraph?.truncated}
           />
           {selectedNodeId && (
-            <p className="mt-2 break-all font-mono text-[10px] text-slate-500">
+            <p className="mt-2 break-all font-mono text-[10px] text-slate-400">
               Seleccionado: {selectedNodeId}
             </p>
           )}
@@ -456,7 +456,7 @@ export default function MultiIntWorkspace({
           >
             {loading === "colocation" ? "Consultando…" : "Buscar coincidencias"}
           </button>
-          <p className="mt-2 text-[10px] text-slate-500">
+          <p className="mt-2 text-[10px] text-slate-400">
             {clusters.length} clusters · {events.length} eventos
             {colocation?.suppressed ? ` · ${colocation.suppressed} suprimidos por TLP` : ""}
           </p>
@@ -475,7 +475,7 @@ export default function MultiIntWorkspace({
             Timeline y evidencia
           </h2>
           {selectedEvent?.evidence_ids && selectedEvent.evidence_ids.length > 0 && (
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] text-slate-400">
               Evidencias del evento: {selectedEvent.evidence_ids.length}
             </span>
           )}
@@ -488,13 +488,13 @@ export default function MultiIntWorkspace({
         {selectedEvent && (
           <div className="mt-2 rounded border border-base-700 p-2 text-[11px] text-slate-300">
             <p>
-              <span className="text-slate-500">Evento:</span>{" "}
+              <span className="text-slate-400">Evento:</span>{" "}
               {selectedEvent.event_type} · {selectedEvent.discipline} ·{" "}
               {selectedEvent.event_time ? new Date(selectedEvent.event_time).toLocaleString() : "—"}
             </p>
             <p>
-              <span className="text-slate-500">Selector:</span>{" "}
-              {selectedEvent.masked_selector ?? "—"} · <span className="text-slate-500">Confianza:</span>{" "}
+              <span className="text-slate-400">Selector:</span>{" "}
+              {selectedEvent.masked_selector ?? "—"} · <span className="text-slate-400">Confianza:</span>{" "}
               {selectedEvent.confidence ?? "—"}
             </p>
             <div className="mt-1 flex flex-wrap gap-1">
@@ -526,12 +526,12 @@ export default function MultiIntWorkspace({
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-semibold text-neon-amber">{signal.signal_type}</span>
-                  <span className="text-slate-500">
+                  <span className="text-slate-400">
                     score {Math.round((signal.score ?? 0) * 100)}% · {signal.occurrences ?? 0} ocurrencias
                   </span>
                 </div>
                 <p className="mt-0.5 text-slate-400">{signal.explanation ?? "—"}</p>
-                <p className="mt-0.5 text-[10px] text-slate-500">
+                <p className="mt-0.5 text-[10px] text-slate-400">
                   Aliases: {(signal.aliases ?? []).join(", ") || "—"} · Plataformas:{" "}
                   {(signal.platforms ?? []).join(", ") || "—"}
                 </p>
@@ -539,7 +539,7 @@ export default function MultiIntWorkspace({
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             Sin señales. Ejecuta la detección sobre una misión con historial de alias.
           </p>
         )}

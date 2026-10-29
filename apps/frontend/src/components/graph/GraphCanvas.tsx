@@ -322,7 +322,7 @@ export default function GraphCanvas({
       {!loading && nodes.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 text-center">
           <p className="text-sm text-slate-300">Sin entidades para mostrar</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             Ajusta los filtros o lanza una consulta GraphRAG.
           </p>
         </div>

@@ -160,7 +160,7 @@ export default function IngestDropzone({ onCompleted }: IngestDropzoneProps): Re
         <p className="text-sm text-slate-200">
           {file ? file.name : "Arrastra un informe aquí"}
         </p>
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-slate-400">
           {file
             ? `${(file.size / 1024).toFixed(0)} KB · pulsa para cambiar`
             : "o haz clic para seleccionar (PDF)"}
@@ -202,7 +202,7 @@ export default function IngestDropzone({ onCompleted }: IngestDropzoneProps): Re
       {job && (
         <div className="flex flex-col gap-1 rounded border border-base-700 bg-base-950/60 p-2">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="font-mono text-slate-500">{job.job_id ?? "—"}</span>
+            <span className="font-mono text-slate-400">{job.job_id ?? "—"}</span>
             {status && (
               <span className={STATUS_COLOR[status]}>{STATUS_LABEL[status]}</span>
             )}
@@ -213,7 +213,7 @@ export default function IngestDropzone({ onCompleted }: IngestDropzoneProps): Re
               style={{ width: `${progressPct}%` }}
             />
           </div>
-          <p className="text-right font-mono text-[10px] text-slate-500">{progressPct}%</p>
+          <p className="text-right font-mono text-[10px] text-slate-400">{progressPct}%</p>
 
           {(job.pending_review ?? 0) > 0 && (
             <p
