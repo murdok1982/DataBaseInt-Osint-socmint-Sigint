@@ -1261,38 +1261,81 @@ GRANT EXECUTE ON FUNCTION intel.tlp_rank(text)
     TO api_reader, svc_director_cell, svc_atenea,
        svc_hermes, svc_aracne, svc_argos;
 
--- Identidad y clearance NO son parámetros: la función los toma de la transacción
--- (osint.actor y osint.clearance), los mismos valores que usa RLS. Un cliente
--- no puede declarar otro revisor ni otro nivel TLP en la llamada.
+-- Clave de atestación: sólo la lee la función SECURITY DEFINER. El lector de la
+-- API no tiene ningún privilegio sobre la tabla, así que no puede firmar.
+-- La clave se inserta en el despliegue desde el gestor de secretos.
+CREATE TABLE staging.attestation_keys (
+    key_id      text PRIMARY KEY DEFAULT 'current',
+    secret      text NOT NULL CHECK (length(secret) >= 32),
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+REVOKE ALL ON staging.attestation_keys FROM PUBLIC;
+
+-- La decisión exige una atestación firmada por el backend:
+--   p_attestation = 'exp|actor|clearance|hmac'
+-- hmac = HMAC-SHA256 de 'proposal_id|status|version|exp|actor|clearance' con
+-- la clave de staging.attestation_keys. El HMAC liga la atestación a esta
+-- propuesta, a este estado y a esta versión: no sirve para otra decisión.
+-- Identidad y nivel TLP salen de la atestación verificada, no de GUC ni de
+-- parámetros que el cliente pueda elegir.
 CREATE OR REPLACE FUNCTION staging.fn_decide_proposal(
     p_proposal_id uuid,
     p_status intel.proposal_status_enum,
     p_reason text,
-    p_version integer
+    p_version integer,
+    p_attestation text
 ) RETURNS SETOF staging.agent_proposals
 LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = staging, intel, pg_temp
+SET search_path = staging, intel, public, pg_temp
 AS $$
 DECLARE
-    v_reviewer  text := NULLIF(btrim(current_setting('osint.actor', true)), '');
-    v_clearance text := coalesce(current_setting('osint.clearance', true), 'TLP:CLEAR');
+    v_parts     text[];
+    v_exp       bigint;
+    v_actor     text;
+    v_clearance text;
+    v_secret    text;
+    v_message   text;
 BEGIN
     IF p_status NOT IN ('ANALYST_VERIFIED', 'REJECTED') THEN
         RAISE EXCEPTION 'Transición de propuesta no permitida: %', p_status
             USING ERRCODE = '22023';
     END IF;
-    IF v_reviewer IS NULL THEN
-        RAISE EXCEPTION 'osint.actor no establecido: la decisión exige identidad de sesión'
-            USING ERRCODE = '42501';
-    END IF;
     IF p_reason IS NULL OR length(btrim(p_reason)) < 8 THEN
         RAISE EXCEPTION 'decision_reason debe tener >= 8 caracteres'
             USING ERRCODE = '23514';
     END IF;
+
+    v_parts := string_to_array(coalesce(p_attestation, ''), '|');
+    IF array_length(v_parts, 1) IS DISTINCT FROM 4 OR v_parts[1] !~ '^[0-9]+$' THEN
+        RAISE EXCEPTION 'atestación malformada' USING ERRCODE = '42501';
+    END IF;
+    v_exp       := v_parts[1]::bigint;
+    v_actor     := v_parts[2];
+    v_clearance := v_parts[3];
+
+    SELECT k.secret INTO v_secret
+      FROM staging.attestation_keys k
+     WHERE k.key_id = 'current';
+    IF v_secret IS NULL THEN
+        RAISE EXCEPTION 'clave de atestación no configurada' USING ERRCODE = '42501';
+    END IF;
+
+    v_message := concat_ws('|', p_proposal_id::text, p_status::text, p_version::text,
+                           v_exp::text, v_actor, v_clearance);
+    IF encode(hmac(v_message, v_secret, 'sha256'), 'hex') IS DISTINCT FROM v_parts[4] THEN
+        RAISE EXCEPTION 'atestación no válida para esta decisión' USING ERRCODE = '42501';
+    END IF;
+    IF extract(epoch FROM now()) > v_exp THEN
+        RAISE EXCEPTION 'atestación caducada' USING ERRCODE = '42501';
+    END IF;
+    IF length(btrim(v_actor)) = 0 THEN
+        RAISE EXCEPTION 'la atestación no identifica al revisor' USING ERRCODE = '42501';
+    END IF;
+
     RETURN QUERY
     UPDATE staging.agent_proposals p
        SET status = p_status,
-           reviewed_by = v_reviewer,
+           reviewed_by = v_actor,
            reviewed_at = now(),
            decision_reason = p_reason,
            version = p.version + 1
@@ -1305,10 +1348,10 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION staging.fn_decide_proposal(
-    uuid, intel.proposal_status_enum, text, integer
+    uuid, intel.proposal_status_enum, text, integer, text
 ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION staging.fn_decide_proposal(
-    uuid, intel.proposal_status_enum, text, integer
+    uuid, intel.proposal_status_enum, text, integer, text
 ) TO api_reader;
 
 -- La verificación de cadena lee todo el ledger, por eso es SECURITY DEFINER
