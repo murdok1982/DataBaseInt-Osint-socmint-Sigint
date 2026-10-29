@@ -265,7 +265,13 @@ def get_v31_gateway() -> Any:
         raise ServiceUnavailable(
             f"Repositorio v3.1 no disponible: {exc}"
         ) from exc
-    return V31Gateway(PostgresV31Repository(get_v31_pool()))
+    # La clave sólo se usa para firmar decisiones; las lecturas no la necesitan.
+    return V31Gateway(
+        PostgresV31Repository(
+            get_v31_pool(),
+            attestation_key=os.environ.get("DB_ATTESTATION_KEY"),
+        )
+    )
 
 
 def close_v31_pool() -> None:

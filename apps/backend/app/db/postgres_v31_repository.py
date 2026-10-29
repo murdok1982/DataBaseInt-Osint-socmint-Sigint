@@ -20,6 +20,7 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Any, Iterable, Optional
 
+from app.db.attestation import issue_attestation
 from app.db.postgres_driver import transaction
 from app.services.correlation import (
     AliasObservation,
@@ -78,8 +79,10 @@ def _row_to_event(row: dict[str, Any]) -> ColocationEvent:
 class PostgresV31Repository:
     """Consultas v3.1 sobre un pool ``psycopg_pool.ConnectionPool``."""
 
-    def __init__(self, pool: Any) -> None:
+    def __init__(self, pool: Any, attestation_key: Optional[str] = None) -> None:
         self._pool = pool
+        # Sin clave sólo fallan las decisiones; las lecturas siguen funcionando.
+        self._attestation_key = attestation_key
 
     # ------------------------------------------------------------------
     # Helpers
@@ -558,22 +561,29 @@ class PostgresV31Repository:
         version: int,
         clearance: str,
     ) -> Optional[dict[str, Any]]:
-        # La API no tiene UPDATE directo: la función SECURITY DEFINER valida
-        # transición, motivo, versión y TLP. Revisor y clearance viajan en la
-        # transacción (osint.actor / osint.clearance), no como parámetros.
-        # Si no actualiza, se distingue 404 de conflicto de versión.
+        # La API no tiene UPDATE directo: la función SECURITY DEFINER valida la
+        # atestación HMAC (revisor y TLP firmados por el backend), transición,
+        # motivo y versión. Si no actualiza, se distingue 404 de conflicto.
+        if not self._attestation_key:
+            raise RuntimeError("DB_ATTESTATION_KEY no configurada: no se pueden decidir propuestas.")
+        attestation = issue_attestation(
+            self._attestation_key,
+            proposal_id=proposal_id,
+            status=status,
+            version=version,
+            actor=reviewer_id,
+            clearance=clearance,
+        )
         sql = f"""
             SELECT {self._PROPOSAL_FIELDS}
             FROM staging.fn_decide_proposal(
-                %s::uuid, %s::intel.proposal_status_enum, %s, %s
+                %s::uuid, %s::intel.proposal_status_enum, %s, %s, %s
             ) p
         """
-        with transaction(
-            self._pool, clearance=clearance, actor=reviewer_id
-        ) as conn:
+        with transaction(self._pool, clearance=clearance) as conn:
             row = conn.execute(
                 sql,
-                (proposal_id, status, reason, version),
+                (proposal_id, status, reason, version, attestation),
             ).fetchone()
         if row is None:
             current = self.get_proposal(
