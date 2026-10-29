@@ -20,7 +20,7 @@ se ejecute `EXPLAIN` de las consultas nuevas.
 | :--- | :--- | :--- |
 | `openapi.yaml` | **v3.1.0** | `f16fbe714c7bbd4ae1a643654956a585f00bbb38c0ed0335190513c248920307` |
 | `v3/hermes-tools.json` | **v3.1.0** | `7b93ff8f58832b951aea187d4d8afde962fc9e91b5af41c9db5fad39bbed9f78` |
-| `v3/db-contract-v3.1.sql` | **v3.1.0** | `29547ef6abb57d642d14edb758db9953997eaa99ca05a77c7b60e7fbae4071cb` |
+| `v3/db-contract-v3.1.sql` | **v3.1.0** (re-sellado 2026-10-29) | `fa5cd9a602ab1530279299ef1bb3b0360200bde67e05268f91e62269038c7403` |
 | `v3/agent-contracts.json` | v3.0.0 (sin cambios) | `6b10056d7c88feff77a03ebf7d1ed2a673ecfaeca6bdbb8f577c1ba93f87d90f` |
 | `graph-constraints.cypher` | v2.1.0 (sin cambios) | `43ecd30a0529fdfcdfc2bd37b2b378688e53cac51c549c74194a310b04b57363` |
 | `extraction-schema.json` | v2.0.0 (sin cambios) | `7f66c7d866b29bfdab2c762a09b2642f7055716a872c8717a8fc52203050e7f8` |
@@ -83,6 +83,7 @@ se ejecute `EXPLAIN` de las consultas nuevas.
 | 2026-10-17 | v2.1.0 | `GET /analyses` + `GET /analyses/{id}/requirements` + vector index por label | Mejora H-5 y corrección de contrato | Agente 0 |
 | 2026-10-17 | v2.2.0 | `429` en login, JWT ≤ 15 min, patrón TOTP, `X-Request-ID` | Auditoría SDD v2.2 (SPEC-04 v2.2, SPEC-06) | Agente 0 |
 | 2026-10-26 | v3.1.0 | 9 rutas multi-INT/evidencia/propuestas, `hermes-tools.json`, DDL v3.1 | Cierre AUD-23/SPEC-01..04 | Agente 0 (provisional) |
+| 2026-10-29 | v3.1.0 (re-sello) | `fn_decide_proposal` sin `p_reviewer`/`p_clearance` (identidad y TLP desde `osint.actor`/`osint.clearance`); `verify_evidence_chain` restringida a `api_reader`, `svc_atenea`, `svc_director_cell` | Auditoría 2026-10-29: escalada de clearance y firma falsificable en aprobaciones; aprobado por el humano | Agente 0 (provisional) |
 
 ## Cómo re-sellar
 1. Verificar que el cambio traza a una spec y que hay aprobación humana.
