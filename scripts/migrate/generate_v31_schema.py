@@ -171,24 +171,29 @@ GRANT EXECUTE ON FUNCTION intel.tlp_rank(text)
     TO api_reader, svc_director_cell, svc_atenea,
        svc_hermes, svc_aracne, svc_argos;
 
+-- Identidad y clearance NO son parámetros: la función los toma de la transacción
+-- (osint.actor y osint.clearance), los mismos valores que usa RLS. Un cliente
+-- no puede declarar otro revisor ni otro nivel TLP en la llamada.
 CREATE OR REPLACE FUNCTION staging.fn_decide_proposal(
     p_proposal_id uuid,
     p_status intel.proposal_status_enum,
-    p_reviewer text,
     p_reason text,
-    p_version integer,
-    p_clearance text
+    p_version integer
 ) RETURNS SETOF staging.agent_proposals
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = staging, intel, pg_temp
 AS $$
+DECLARE
+    v_reviewer  text := NULLIF(btrim(current_setting('osint.actor', true)), '');
+    v_clearance text := coalesce(current_setting('osint.clearance', true), 'TLP:CLEAR');
 BEGIN
     IF p_status NOT IN ('ANALYST_VERIFIED', 'REJECTED') THEN
         RAISE EXCEPTION 'Transición de propuesta no permitida: %', p_status
             USING ERRCODE = '22023';
     END IF;
-    IF p_reviewer IS NULL OR length(btrim(p_reviewer)) = 0 THEN
-        RAISE EXCEPTION 'reviewed_by es obligatorio' USING ERRCODE = '23514';
+    IF v_reviewer IS NULL THEN
+        RAISE EXCEPTION 'osint.actor no establecido: la decisión exige identidad de sesión'
+            USING ERRCODE = '42501';
     END IF;
     IF p_reason IS NULL OR length(btrim(p_reason)) < 8 THEN
         RAISE EXCEPTION 'decision_reason debe tener >= 8 caracteres'
@@ -197,24 +202,31 @@ BEGIN
     RETURN QUERY
     UPDATE staging.agent_proposals p
        SET status = p_status,
-           reviewed_by = p_reviewer,
+           reviewed_by = v_reviewer,
            reviewed_at = now(),
            decision_reason = p_reason,
            version = p.version + 1
      WHERE p.proposal_id = p_proposal_id
        AND p.version = p_version
        AND p.status = 'AGENT_STAGED'
-       AND intel.tlp_rank(p.tlp_classification::text) <= intel.tlp_rank(p_clearance)
+       AND intel.tlp_rank(p.tlp_classification::text) <= intel.tlp_rank(v_clearance)
     RETURNING p.*;
 END;
 $$;
 
 REVOKE ALL ON FUNCTION staging.fn_decide_proposal(
-    uuid, intel.proposal_status_enum, text, text, integer, text
+    uuid, intel.proposal_status_enum, text, integer
 ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION staging.fn_decide_proposal(
-    uuid, intel.proposal_status_enum, text, text, integer, text
+    uuid, intel.proposal_status_enum, text, integer
 ) TO api_reader;
+
+-- La verificación de cadena lee todo el ledger, por eso es SECURITY DEFINER
+-- (RLS la falsearía). Sólo puede invocarla el lector de la API, el atenea y el
+-- director; el resto de roles de servicio queda fuera.
+REVOKE ALL ON FUNCTION staging.verify_evidence_chain(bigint, bigint) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION staging.verify_evidence_chain(bigint, bigint)
+    TO api_reader, svc_atenea, svc_director_cell;
 
 -- Backfill de alias v3.0 -> v3.1 (sólo si existe la tabla legacy).
 DO $$
