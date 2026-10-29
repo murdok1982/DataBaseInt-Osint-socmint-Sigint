@@ -106,8 +106,13 @@ def transaction(
     *,
     clearance: str = DEFAULT_CLEARANCE,
     break_glass: bool = False,
+    actor: Optional[str] = None,
 ) -> Iterator[Any]:
     """Transacción con contexto RLS de la API.
+
+    ``actor`` es la identidad humana autenticada (sub del JWT). La función
+    ``staging.fn_decide_proposal`` la toma de ``osint.actor`` y no la acepta
+    como parámetro, para que el cliente no pueda firmar como otro revisor.
 
     ``set_config(..., true)`` es local a la transacción: no contamina
     conexiones reutilizadas por el pool.
@@ -117,6 +122,10 @@ def transaction(
             conn.execute(
                 "SELECT set_config('osint.clearance', %s, true)",
                 (clearance,),
+            )
+            conn.execute(
+                "SELECT set_config('osint.actor', %s, true)",
+                (actor or "",),
             )
             conn.execute(
                 "SELECT set_config('osint.break_glass', %s, true)",

@@ -559,18 +559,21 @@ class PostgresV31Repository:
         clearance: str,
     ) -> Optional[dict[str, Any]]:
         # La API no tiene UPDATE directo: la función SECURITY DEFINER valida
-        # transición, motivo, versión y TLP. Si no actualiza, se distingue 404
-        # de conflicto de versión con una lectura posterior.
+        # transición, motivo, versión y TLP. Revisor y clearance viajan en la
+        # transacción (osint.actor / osint.clearance), no como parámetros.
+        # Si no actualiza, se distingue 404 de conflicto de versión.
         sql = f"""
             SELECT {self._PROPOSAL_FIELDS}
             FROM staging.fn_decide_proposal(
-                %s::uuid, %s::intel.proposal_status_enum, %s, %s, %s, %s
+                %s::uuid, %s::intel.proposal_status_enum, %s, %s
             ) p
         """
-        with transaction(self._pool, clearance=clearance) as conn:
+        with transaction(
+            self._pool, clearance=clearance, actor=reviewer_id
+        ) as conn:
             row = conn.execute(
                 sql,
-                (proposal_id, status, reviewer_id, reason, version, clearance),
+                (proposal_id, status, reason, version),
             ).fetchone()
         if row is None:
             current = self.get_proposal(
