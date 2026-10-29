@@ -60,3 +60,36 @@ test("cada vista del dashboard autenticado cumple WCAG 2.2 AA", async ({ page })
     await expectNoWcagViolations(page);
   }
 });
+
+/** WCAG 2.2 1.4.10 (reflujo): a 320 px de ancho no hay desplazamiento horizontal. */
+test("el login no tiene desplazamiento horizontal a 320 px (1.4.10)", async ({ page }) => {
+  await anonymousSession(page);
+  await page.setViewportSize({ width: 320, height: 640 });
+
+  await page.goto("/login");
+  await expect(page.getByLabel("Operador")).toBeVisible();
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow, "píxeles de desplazamiento horizontal").toBeLessThanOrEqual(0);
+});
+
+/** WCAG 2.2 2.4.7 (foco visible): el foco por teclado tiene un indicador visible. */
+test("el foco por teclado del login tiene indicador visible (2.4.7)", async ({ page }) => {
+  await anonymousSession(page);
+  await page.goto("/login");
+
+  await page.getByLabel("Operador").focus();
+  await page.keyboard.press("Tab");
+  await page.getByLabel("Operador").focus();
+
+  const indicator = await page.evaluate(() => {
+    const el = document.activeElement as HTMLElement | null;
+    if (!el) return { outline: "none", shadow: "none" };
+    const style = getComputedStyle(el);
+    return { outline: `${style.outlineStyle} ${style.outlineWidth}`, shadow: style.boxShadow };
+  });
+  const visible = indicator.outline.split(" ")[0] !== "none" || indicator.shadow !== "none";
+  expect(visible, `indicador de foco: ${JSON.stringify(indicator)}`).toBe(true);
+});
